@@ -1,63 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
+const API_URL = '/api';
+
 export default function Clientes() {
+    const [clientes, setClientes] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [formLoading, setFormLoading] = useState(false);
     const [formData, setFormData] = useState({
         nombre: '',
+        email: '',
         direccion: '',
         celular: ''
     });
-    const [focusedField, setFocusedField] = useState(null);
 
-    // Sample clients data
-    const clientes = [
-        {
-            id: 1,
-            nombre: 'Juan Pérez',
-            email: 'juan.perez@email.com',
-            direccion: 'Av. Principal 123, Centro',
-            celular: '+591 70123456',
-            icon: 'person',
-            colorClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-        },
-        {
-            id: 2,
-            nombre: 'María Rodríguez',
-            email: 'maria.r@email.com',
-            direccion: 'Calle Los Pinos 45, Norte',
-            celular: '+591 76543210',
-            icon: 'person_2',
-            colorClass: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-        },
-        {
-            id: 3,
-            nombre: 'Carlos Gómez',
-            email: 'carlos.g@email.com',
-            direccion: 'Urb. El Sol, Casa 12',
-            celular: '+591 68901234',
-            icon: 'person',
-            colorClass: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-        },
-        {
-            id: 4,
-            nombre: 'Ana Torres',
-            email: 'ana.t@email.com',
-            direccion: 'Av. Libertador 789',
-            celular: '+591 77556778',
-            icon: 'person_3',
-            colorClass: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-        },
-        {
-            id: 5,
-            nombre: 'Luis Fernández',
-            email: 'luis.f@email.com',
-            direccion: 'Calle 5 de Mayo, Local 2',
-            celular: '+591 60876543',
-            icon: 'person_4',
-            colorClass: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-        },
-    ];
+    useEffect(() => {
+        fetchClientes();
+    }, []);
+
+    const fetchClientes = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/clientes`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al obtener clientes');
+            }
+
+            const result = await response.json();
+            setClientes(Array.isArray(result) ? result : (result.data || []));
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('¿Estás seguro de eliminar este cliente?')) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/clientes/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al eliminar cliente');
+            }
+
+            fetchClientes();
+        } catch (err) {
+            alert('Error al eliminar: ' + err.message);
+        }
+    };
+
+    const getColorClass = (index) => {
+        const colors = [
+            'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+            'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
+            'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
+            'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400',
+            'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400',
+        ];
+        return colors[index % colors.length];
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -67,38 +81,86 @@ export default function Clientes() {
         }));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        console.log('Cliente data:', formData);
-        setIsModalOpen(false);
-        setFormData({ nombre: '', direccion: '', celular: '' });
+    const openModal = (cliente = null) => {
+        if (cliente) {
+            setEditingId(cliente.id);
+            setFormData({
+                nombre: cliente.nombre || '',
+                email: cliente.email || '',
+                direccion: cliente.direccion || '',
+                celular: cliente.celular || ''
+            });
+        } else {
+            setEditingId(null);
+            setFormData({ nombre: '', email: '', direccion: '', celular: '' });
+        }
+        setIsModalOpen(true);
     };
 
-    const openModal = () => setIsModalOpen(true);
     const closeModal = () => {
         setIsModalOpen(false);
-        setFormData({ nombre: '', direccion: '', celular: '' });
+        setEditingId(null);
+        setFormData({ nombre: '', email: '', direccion: '', celular: '' });
     };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setFormLoading(true);
+
+        try {
+            const token = localStorage.getItem('token');
+            const url = editingId ? `${API_URL}/clientes/${editingId}` : `${API_URL}/clientes`;
+            const method = editingId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Error al guardar cliente');
+            }
+
+            closeModal();
+            fetchClientes();
+        } catch (err) {
+            alert('Error: ' + err.message);
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
+                <span className="material-symbols-outlined text-red-500 text-4xl mb-2">error</span>
+                <p className="text-red-700 dark:text-red-400">{error}</p>
+                <button
+                    onClick={fetchClientes}
+                    className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                >
+                    Reintentar
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6">
-            {/* CSS Animations */}
-            <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .modal-backdrop { animation: fadeIn 0.2s ease-out; }
-        .modal-content { animation: slideUp 0.3s ease-out; }
-        .input-animated { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .input-animated:focus { transform: scale(1.01); }
-        .btn-bounce:active { transform: scale(0.97); }
-      `}</style>
-
             {/* Header Section */}
             <div className="flex flex-wrap justify-between gap-3 items-center">
                 <div className="flex flex-col">
@@ -111,8 +173,8 @@ export default function Clientes() {
                 </div>
                 <div className="flex gap-3">
                     <button
-                        onClick={openModal}
-                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-all duration-300 shadow-md shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.02] btn-bounce"
+                        onClick={() => openModal()}
+                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-sm"
                     >
                         <span className="material-symbols-outlined text-[20px]">person_add</span>
                         Nuevo Cliente
@@ -122,7 +184,7 @@ export default function Clientes() {
 
             {/* Table Card */}
             <div className="bg-white dark:bg-background-dark dark:border dark:border-border-dark rounded-xl shadow-sm border border-border-light overflow-hidden">
-                {/* Search and Filter Bar */}
+                {/* Search Bar */}
                 <div className="p-4 border-b border-border-light dark:border-border-dark flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="relative w-full sm:w-80">
                         <span className="material-symbols-outlined absolute left-3 top-2.5 text-neutral-gray text-[20px]">search</span>
@@ -132,12 +194,6 @@ export default function Clientes() {
                             type="text"
                         />
                     </div>
-                    <div className="flex gap-2">
-                        <button className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-lg text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                            <span className="material-symbols-outlined text-[18px]">filter_list</span>
-                            Filtrar
-                        </button>
-                    </div>
                 </div>
 
                 {/* Table */}
@@ -145,53 +201,72 @@ export default function Clientes() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-background-light dark:bg-gray-900/50 border-b border-border-light dark:border-border-dark text-xs uppercase text-neutral-gray font-semibold tracking-wide">
-                                <th className="p-4 pl-6 w-1/4">Nombre</th>
-                                <th className="p-4 w-1/3">Dirección</th>
-                                <th className="p-4 w-1/4">Número de Celular</th>
-                                <th className="p-4 pr-6 text-right w-40">Acciones</th>
+                                <th className="p-4 pl-6">Nombre</th>
+                                <th className="p-4">Email</th>
+                                <th className="p-4">Dirección</th>
+                                <th className="p-4">Celular</th>
+                                <th className="p-4 pr-6 text-right w-32">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
-                            {clientes.map((cliente) => (
-                                <tr key={cliente.id} className="hover:bg-background-light dark:hover:bg-gray-800/50 transition-colors group">
-                                    <td className="p-4 pl-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`flex items-center justify-center w-10 h-10 rounded-full ${cliente.colorClass} overflow-hidden`}>
-                                                <span className="material-symbols-outlined">{cliente.icon}</span>
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-bold text-gray-900 dark:text-white">{cliente.nombre}</div>
-                                                <div className="text-xs text-neutral-gray">{cliente.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <span className="text-sm text-neutral-gray dark:text-gray-400">{cliente.direccion}</span>
-                                    </td>
-                                    <td className="p-4">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-background-light text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                                            <span className="material-symbols-outlined text-[14px]">phone</span>
-                                            {cliente.celular}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 pr-6 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-gray-100 hover:text-primary dark:hover:bg-gray-800 transition-colors"
-                                                title="Editar"
-                                            >
-                                                <span className="material-symbols-outlined text-[20px]">edit</span>
-                                            </button>
-                                            <button
-                                                className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-red-50 hover:text-destructive-red dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
-                                                title="Eliminar"
-                                            >
-                                                <span className="material-symbols-outlined text-[20px]">delete</span>
-                                            </button>
-                                        </div>
+                            {clientes.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="py-12 text-center">
+                                        <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 text-6xl mb-4 block">group</span>
+                                        <p className="text-neutral-gray dark:text-gray-400">No hay clientes registrados</p>
+                                        <button onClick={() => openModal()} className="text-primary hover:underline text-sm mt-2 inline-block">
+                                            Agregar primer cliente
+                                        </button>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                clientes.map((cliente, index) => (
+                                    <tr key={cliente.id} className="hover:bg-background-light dark:hover:bg-gray-800/50 transition-colors group">
+                                        <td className="p-4 pl-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${getColorClass(index)}`}>
+                                                    <span className="material-symbols-outlined">person</span>
+                                                </div>
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white">{cliente.nombre}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="text-sm text-neutral-gray dark:text-gray-400">
+                                                {cliente.email || 'Sin email'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="text-sm text-neutral-gray dark:text-gray-400">
+                                                {cliente.direccion || 'Sin dirección'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-background-light text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                                                <span className="material-symbols-outlined text-[14px]">phone</span>
+                                                {cliente.celular || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 pr-6 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                    onClick={() => openModal(cliente)}
+                                                    className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-gray-100 hover:text-primary dark:hover:bg-gray-800 transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <span className="material-symbols-outlined text-[20px]">edit</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(cliente.id)}
+                                                    className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-red-50 hover:text-destructive-red dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                                                    title="Eliminar"
+                                                >
+                                                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -199,42 +274,30 @@ export default function Clientes() {
                 {/* Pagination */}
                 <div className="p-4 border-t border-border-light dark:border-border-dark flex flex-col sm:flex-row items-center justify-between gap-4">
                     <span className="text-sm text-neutral-gray dark:text-gray-400">
-                        Mostrando <span className="font-medium text-gray-900 dark:text-white">1-5</span> de <span className="font-medium text-gray-900 dark:text-white">145</span> clientes
+                        Mostrando <span className="font-medium text-gray-900 dark:text-white">{clientes.length}</span> clientes
                     </span>
-                    <div className="flex gap-2">
-                        <button
-                            className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled
-                        >
-                            Anterior
-                        </button>
-                        <button className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
-                            Siguiente
-                        </button>
-                    </div>
                 </div>
             </div>
 
-            {/* Modal Flotante */}
+            {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    {/* Backdrop */}
-                    <div
-                        className="modal-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        onClick={closeModal}
-                    />
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeModal} />
 
-                    {/* Modal Content */}
-                    <div className="modal-content relative w-full max-w-lg bg-white dark:bg-background-dark rounded-2xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden">
+                    <div className="relative w-full max-w-lg bg-white dark:bg-background-dark rounded-2xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden">
                         {/* Modal Header */}
-                        <div className="relative px-6 py-5 border-b border-border-light dark:border-border-dark bg-gradient-to-r from-primary/5 to-blue-500/5 dark:from-primary/10 dark:to-blue-500/10">
+                        <div className="relative px-6 py-5 border-b border-border-light dark:border-border-dark bg-gradient-to-r from-primary/5 to-blue-500/5">
                             <div className="flex items-center gap-4">
-                                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-blue-600 text-white shadow-lg shadow-primary/30">
-                                    <span className="material-symbols-outlined text-2xl">person_add</span>
+                                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-blue-600 text-white shadow-lg">
+                                    <span className="material-symbols-outlined text-2xl">{editingId ? 'edit' : 'person_add'}</span>
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nuevo Cliente</h2>
-                                    <p className="text-sm text-neutral-gray">Registra un nuevo cliente</p>
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                        {editingId ? 'Editar Cliente' : 'Nuevo Cliente'}
+                                    </h2>
+                                    <p className="text-sm text-neutral-gray">
+                                        {editingId ? 'Modifica los datos del cliente' : 'Registra un nuevo cliente'}
+                                    </p>
                                 </div>
                             </div>
                             <button
@@ -250,74 +313,63 @@ export default function Clientes() {
                             <div className="flex flex-col gap-5">
                                 {/* Nombre */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" htmlFor="nombre">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                         Nombre Completo <span className="text-destructive-red">*</span>
                                     </label>
-                                    <div className={`relative transition-all duration-300 ${focusedField === 'nombre' ? 'scale-[1.01]' : ''}`}>
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-gray material-symbols-outlined text-[20px]">
-                                            person
-                                        </span>
-                                        <input
-                                            type="text"
-                                            id="nombre"
-                                            name="nombre"
-                                            value={formData.nombre}
-                                            onChange={handleChange}
-                                            onFocus={() => setFocusedField('nombre')}
-                                            onBlur={() => setFocusedField(null)}
-                                            className="input-animated w-full pl-12 pr-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm placeholder:text-neutral-gray"
-                                            placeholder="Ej. Juan Pérez"
-                                            required
-                                        />
-                                    </div>
+                                    <input
+                                        type="text"
+                                        name="nombre"
+                                        value={formData.nombre}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                                        placeholder="Ej. Juan Pérez"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Email */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                                        placeholder="cliente@email.com"
+                                    />
                                 </div>
 
                                 {/* Dirección */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" htmlFor="direccion">
-                                        Dirección <span className="text-destructive-red">*</span>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        Dirección
                                     </label>
-                                    <div className={`relative transition-all duration-300 ${focusedField === 'direccion' ? 'scale-[1.01]' : ''}`}>
-                                        <span className="absolute left-4 top-3 text-neutral-gray material-symbols-outlined text-[20px]">
-                                            pin_drop
-                                        </span>
-                                        <textarea
-                                            id="direccion"
-                                            name="direccion"
-                                            value={formData.direccion}
-                                            onChange={handleChange}
-                                            onFocus={() => setFocusedField('direccion')}
-                                            onBlur={() => setFocusedField(null)}
-                                            rows="2"
-                                            className="input-animated w-full pl-12 pr-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm placeholder:text-neutral-gray resize-none"
-                                            placeholder="Av. Principal 123, Centro"
-                                            required
-                                        />
-                                    </div>
+                                    <input
+                                        type="text"
+                                        name="direccion"
+                                        value={formData.direccion}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                                        placeholder="Av. Principal #456"
+                                    />
                                 </div>
 
-                                {/* Número de Celular */}
+                                {/* Celular */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" htmlFor="celular">
-                                        Número de Celular <span className="text-destructive-red">*</span>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        Número de Celular
                                     </label>
-                                    <div className={`relative transition-all duration-300 ${focusedField === 'celular' ? 'scale-[1.01]' : ''}`}>
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-gray material-symbols-outlined text-[20px]">
-                                            smartphone
-                                        </span>
-                                        <input
-                                            type="tel"
-                                            id="celular"
-                                            name="celular"
-                                            value={formData.celular}
-                                            onChange={handleChange}
-                                            onFocus={() => setFocusedField('celular')}
-                                            onBlur={() => setFocusedField(null)}
-                                            className="input-animated w-full pl-12 pr-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm placeholder:text-neutral-gray"
-                                            placeholder="+591 70000000"
-                                            required
-                                        />
-                                    </div>
+                                    <input
+                                        type="tel"
+                                        name="celular"
+                                        value={formData.celular}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                                        placeholder="76543211"
+                                    />
                                 </div>
                             </div>
 
@@ -326,16 +378,17 @@ export default function Clientes() {
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-gray-600 dark:text-gray-300 font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300 btn-bounce"
+                                    className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-gray-600 dark:text-gray-300 font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-primary to-blue-600 text-white font-bold text-sm transition-all duration-300 shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] btn-bounce"
+                                    disabled={formLoading}
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50"
                                 >
                                     <span className="material-symbols-outlined text-[18px]">save</span>
-                                    Guardar
+                                    {formLoading ? 'Guardando...' : 'Guardar'}
                                 </button>
                             </div>
                         </form>

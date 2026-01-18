@@ -58,11 +58,19 @@ const router = createBrowserRouter([
         element: <AddProducto />
       },
       {
+        path: 'productos/edit/:id',
+        element: <AddProducto />
+      },
+      {
         path: 'categorias',
         element: <Categorias />
       },
       {
         path: 'categorias/add',
+        element: <AddCategoria />
+      },
+      {
+        path: 'categorias/edit/:id',
         element: <AddCategoria />
       },
       {

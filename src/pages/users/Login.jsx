@@ -1,9 +1,48 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const API_URL = '/api';
 
 export default function Login() {
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Add login logic here
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al iniciar sesión');
+      }
+
+      // Guardar token y datos del usuario en localStorage
+      localStorage.setItem('token', data.token);
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      // Redirigir al dashboard de admin
+      navigate('/admin');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,6 +69,14 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-red-500 text-[20px]">error</span>
+                <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+
             {/* Form Section */}
             <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
               {/* Email/Usuario Input */}
@@ -49,6 +96,10 @@ export default function Login() {
                     id="email"
                     placeholder="ej. usuario@zapateria.com"
                     type="text"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -70,17 +121,31 @@ export default function Login() {
                     id="password"
                     placeholder="••••••••"
                     type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
                   />
                 </div>
               </div>
 
               {/* Submit Button */}
               <button
-                className="mt-4 w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-all shadow-md shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:ring-offset-background-dark"
+                className="mt-4 w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-all shadow-md shadow-primary/20 hover:shadow-primary/40 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:ring-offset-background-dark disabled:opacity-50 disabled:cursor-not-allowed"
                 type="submit"
+                disabled={loading}
               >
-                <span className="material-symbols-outlined">login</span>
-                Iniciar Sesión
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Iniciando...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">login</span>
+                    Iniciar Sesión
+                  </>
+                )}
               </button>
             </form>
 

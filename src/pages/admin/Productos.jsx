@@ -1,104 +1,131 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function Productos() {
-    // Sample product data matching the HTML structure
-    const productos = [
-        {
-            id: 1,
-            nombre: 'Botas de Montaña X-Trail',
-            sku: 'BTA-001',
-            tallas: 'Tallas: 38-45',
-            icon: 'hiking',
-            precioVenta: 89.99,
-            precioCompra: 45.00,
-            seVendePor: 'Par',
-            stock: 45,
-            estadoStock: 'en_stock'
-        },
-        {
-            id: 2,
-            nombre: 'Zapatillas Urbanas Classic',
-            sku: 'ZPT-023',
-            tallas: 'Tallas: 36-44',
-            icon: 'do_not_step',
-            precioVenta: 55.00,
-            precioCompra: 28.50,
-            seVendePor: 'Par',
-            stock: 5,
-            estadoStock: 'bajo_stock'
-        },
-        {
-            id: 3,
-            nombre: 'Patines Profesionales Pro',
-            sku: 'PAT-099',
-            tallas: 'Tallas: Ajustable',
-            icon: 'roller_skating',
-            precioVenta: 120.00,
-            precioCompra: 65.00,
-            seVendePor: 'Par',
-            stock: 0,
-            estadoStock: 'agotado'
-        },
-        {
-            id: 4,
-            nombre: 'Cordones Premium (Pack 3)',
-            sku: 'ACC-004',
-            tallas: 'Colores Varios',
-            icon: 'checkroom',
-            precioVenta: 8.50,
-            precioCompra: 2.10,
-            seVendePor: 'Unidad',
-            stock: 120,
-            estadoStock: 'en_stock'
-        },
-        {
-            id: 5,
-            nombre: 'Mocasines de Cuero',
-            sku: 'MOC-012',
-            tallas: 'Tallas: 40-43',
-            icon: 'steps',
-            precioVenta: 115.00,
-            precioCompra: 60.00,
-            seVendePor: 'Par',
-            stock: 18,
-            estadoStock: 'en_stock'
-        },
-    ];
+const API_URL = '/api';
 
-    const getStockStatus = (estado, stock, seVendePor) => {
-        const unidad = seVendePor === 'Par' ? 'Pares' : 'Unidades';
-        switch (estado) {
-            case 'en_stock':
-                return {
-                    label: 'En Stock',
-                    bgClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-                    dotClass: 'bg-emerald-500',
-                    cantidad: `${stock} ${unidad}`
-                };
-            case 'bajo_stock':
-                return {
-                    label: 'Bajo Stock',
-                    bgClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-                    dotClass: 'bg-amber-500',
-                    cantidad: `${stock} ${unidad}`
-                };
-            case 'agotado':
-                return {
-                    label: 'Agotado',
-                    bgClass: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-                    dotClass: 'bg-red-500',
-                    cantidad: `0 ${unidad}`
-                };
-            default:
-                return {
-                    label: 'En Stock',
-                    bgClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-                    dotClass: 'bg-emerald-500',
-                    cantidad: `${stock} ${unidad}`
-                };
+export default function Productos() {
+    const [productos, setProductos] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        fetchProductos();
+    }, []);
+
+    const fetchProductos = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/productos`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al obtener productos');
+            }
+
+            const result = await response.json();
+            setProductos(result.data || []);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
     };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('¿Estás seguro de eliminar este producto?')) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/productos/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al eliminar producto');
+            }
+
+            // Refresh the list
+            fetchProductos();
+        } catch (err) {
+            alert('Error al eliminar: ' + err.message);
+        }
+    };
+
+    const getStockStatus = (producto) => {
+        const stock = producto.stockActual ?? producto.stock ?? 0;
+        const stockMinimo = producto.stockMinimo ?? 5;
+        const unidad = producto.unidadMedida === 'Par' ? 'Pares' : 'Unidades';
+
+        if (stock === 0) {
+            return {
+                label: 'Agotado',
+                bgClass: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                dotClass: 'bg-red-500',
+                cantidad: `0 ${unidad}`
+            };
+        } else if (stock <= stockMinimo) {
+            return {
+                label: 'Bajo Stock',
+                bgClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+                dotClass: 'bg-amber-500',
+                cantidad: `${stock} ${unidad}`
+            };
+        } else {
+            return {
+                label: 'En Stock',
+                bgClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+                dotClass: 'bg-emerald-500',
+                cantidad: `${stock} ${unidad}`
+            };
+        }
+    };
+
+    const getCategoryIcon = (categoria) => {
+        const iconMap = {
+            'Deportivo': 'sports_soccer',
+            'Formal': 'business_center',
+            'Botas': 'hiking',
+            'Sandalias': 'beach_access',
+            'Niños': 'child_care',
+            'Damas': 'woman',
+            'Caballeros': 'man',
+            'Casual': 'do_not_step',
+            'Accesorios': 'checkroom'
+        };
+        return iconMap[categoria] || 'inventory_2';
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
+                <span className="material-symbols-outlined text-red-500 text-4xl mb-2">error</span>
+                <p className="text-red-700 dark:text-red-400">{error}</p>
+                <button
+                    onClick={fetchProductos}
+                    className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                >
+                    Reintentar
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6">
@@ -114,7 +141,8 @@ export default function Productos() {
                     </button>
                     <Link to="/admin/productos/add" className="bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-primary/40 transition-all">
                         <span className="material-symbols-outlined text-[20px]">add</span> Nuevo Producto
-                    </Link>                </div>
+                    </Link>
+                </div>
             </div>
 
             {/* Search and Filter Bar */}
@@ -150,68 +178,105 @@ export default function Productos() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-background-light dark:bg-gray-900/50 border-b border-border-light dark:border-border-dark">
-                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider w-[35%]">Descripción del Producto</th>
+                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider w-[30%]">Descripción del Producto</th>
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-right">Precio Venta</th>
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-right hidden lg:table-cell">Precio Compra</th>
-                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Se Vende Por</th>
+                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Talla</th>
+                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Color</th>
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Inventario</th>
-                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-right w-[180px]">Acciones</th>
+                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-right w-[150px]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
-                            {productos.map((producto) => {
-                                const stockStatus = getStockStatus(producto.estadoStock, producto.stock, producto.seVendePor);
-                                return (
-                                    <tr key={producto.id} className="group hover:bg-background-light dark:hover:bg-gray-700/50 transition-colors">
-                                        <td className="py-4 px-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="size-12 rounded-lg bg-background-light dark:bg-gray-700 flex-shrink-0 flex items-center justify-center">
-                                                    <span className="material-symbols-outlined text-neutral-gray">{producto.icon}</span>
+                            {productos.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" className="py-12 text-center">
+                                        <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 text-6xl mb-4 block">inventory_2</span>
+                                        <p className="text-neutral-gray dark:text-gray-400">No hay productos registrados</p>
+                                        <Link to="/admin/productos/add" className="text-primary hover:underline text-sm mt-2 inline-block">
+                                            Agregar primer producto
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ) : (
+                                productos.map((producto) => {
+                                    const stockStatus = getStockStatus(producto);
+                                    return (
+                                        <tr key={producto.id} className="group hover:bg-background-light dark:hover:bg-gray-700/50 transition-colors">
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="size-12 rounded-lg bg-background-light dark:bg-gray-700 flex-shrink-0 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-neutral-gray">
+                                                            {getCategoryIcon(producto.categoria?.nombre)}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{producto.nombre}</p>
+                                                        <p className="text-neutral-gray dark:text-gray-400 text-xs">
+                                                            SKU: {producto.codigoBarras || producto.codigoInterno || 'N/A'}
+                                                            {producto.categoria && ` • ${producto.categoria.nombre}`}
+                                                        </p>
+                                                        {(producto.sucursal || producto.almacen) && (
+                                                            <p className="text-neutral-gray dark:text-gray-500 text-xs mt-0.5">
+                                                                {producto.sucursal?.nombre}{producto.almacen && ` → ${producto.almacen.nombre}`}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{producto.nombre}</p>
-                                                    <p className="text-neutral-gray dark:text-gray-400 text-xs">SKU: {producto.sku} • {producto.tallas}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6 text-right">
-                                            <span className="font-bold text-gray-900 dark:text-white text-sm">${producto.precioVenta.toFixed(2)}</span>
-                                        </td>
-                                        <td className="py-4 px-6 text-right hidden lg:table-cell">
-                                            <span className="text-neutral-gray dark:text-gray-400 text-sm">${producto.precioCompra.toFixed(2)}</span>
-                                        </td>
-                                        <td className="py-4 px-6 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${producto.seVendePor === 'Par'
-                                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                                : 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                                                }`}>
-                                                {producto.seVendePor}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-6 text-center">
-                                            <div className="flex flex-col items-center">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${stockStatus.bgClass}`}>
-                                                    <span className={`size-1.5 rounded-full ${stockStatus.dotClass}`}></span>
-                                                    {stockStatus.label}
+                                            </td>
+                                            <td className="py-4 px-6 text-right">
+                                                <span className="font-bold text-gray-900 dark:text-white text-sm">
+                                                    ${parseFloat(producto.precioVenta).toFixed(2)}
                                                 </span>
-                                                <span className="text-xs text-neutral-gray mt-1">{stockStatus.cantidad}</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-primary bg-blue-50 hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors border border-transparent" title="Editar Producto">
-                                                    <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                    <span className="hidden sm:inline">Editar</span>
-                                                </button>
-                                                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-destructive-red bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors border border-transparent" title="Eliminar Producto">
-                                                    <span className="material-symbols-outlined text-[16px]">delete</span>
-                                                    <span className="hidden sm:inline">Eliminar</span>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                                            </td>
+                                            <td className="py-4 px-6 text-right hidden lg:table-cell">
+                                                <span className="text-neutral-gray dark:text-gray-400 text-sm">
+                                                    ${parseFloat(producto.precioCompra).toFixed(2)}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                    {producto.talla || 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                                                    {producto.color || 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${stockStatus.bgClass}`}>
+                                                        <span className={`size-1.5 rounded-full ${stockStatus.dotClass}`}></span>
+                                                        {stockStatus.label}
+                                                    </span>
+                                                    <span className="text-xs text-neutral-gray mt-1">{stockStatus.cantidad}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Link
+                                                        to={`/admin/productos/edit/${producto.id}`}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-primary bg-blue-50 hover:bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors border border-transparent"
+                                                        title="Editar Producto"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        <span className="hidden sm:inline">Editar</span>
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => handleDelete(producto.id)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-destructive-red bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors border border-transparent"
+                                                        title="Eliminar Producto"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        <span className="hidden sm:inline">Eliminar</span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -219,7 +284,7 @@ export default function Productos() {
                 {/* Pagination */}
                 <div className="px-6 py-4 bg-white dark:bg-background-dark border-t border-border-light dark:border-border-dark flex items-center justify-between">
                     <span className="text-sm text-neutral-gray dark:text-gray-400">
-                        Mostrando <span className="font-medium text-gray-900 dark:text-white">1</span> a <span className="font-medium text-gray-900 dark:text-white">5</span> de <span className="font-medium text-gray-900 dark:text-white">128</span> resultados
+                        Mostrando <span className="font-medium text-gray-900 dark:text-white">{productos.length}</span> productos
                     </span>
                     <div className="flex items-center gap-2">
                         <button className="p-2 rounded-lg border border-border-light dark:border-border-dark text-neutral-gray dark:text-gray-400 hover:bg-background-light dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
