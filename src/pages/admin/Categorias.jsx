@@ -7,6 +7,31 @@ export default function Categorias() {
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Filtrar categorías
+    const filteredCategorias = categorias.filter(cat => {
+        const searchLower = searchTerm.toLowerCase();
+        return !searchTerm || 
+            cat.nombre?.toLowerCase().includes(searchLower) ||
+            cat.descripcion?.toLowerCase().includes(searchLower);
+    });
+
+    // Paginación
+    const indexOfLast = currentPage * itemsPerPage;
+    const indexOfFirst = indexOfLast - itemsPerPage;
+    const currentItems = filteredCategorias.slice(indexOfFirst, indexOfLast);
+    const totalPages = Math.ceil(filteredCategorias.length / itemsPerPage);
+
+    const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+    const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+
+    // Reset página al buscar
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
 
     useEffect(() => {
         fetchCategorias();
@@ -130,7 +155,6 @@ export default function Categorias() {
 
             {/* Table Card */}
             <div className="bg-white dark:bg-background-dark dark:border dark:border-border-dark rounded-xl shadow-sm border border-border-light overflow-hidden">
-                {/* Search and Filter Bar */}
                 <div className="p-4 border-b border-border-light dark:border-border-dark flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="relative w-full sm:w-80">
                         <span className="material-symbols-outlined absolute left-3 top-2.5 text-neutral-gray text-[20px]">search</span>
@@ -138,13 +162,9 @@ export default function Categorias() {
                             className="w-full pl-10 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
                             placeholder="Buscar categoría..."
                             type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                    </div>
-                    <div className="flex gap-2">
-                        <button className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark rounded-lg text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                            <span className="material-symbols-outlined text-[18px]">filter_list</span>
-                            Filtrar
-                        </button>
                     </div>
                 </div>
 
@@ -171,7 +191,7 @@ export default function Categorias() {
                                     </td>
                                 </tr>
                             ) : (
-                                categorias.map((categoria, index) => (
+                                currentItems.map((categoria, index) => (
                                     <tr key={categoria.id} className="hover:bg-background-light dark:hover:bg-gray-800/50 transition-colors group">
                                         <td className="p-4 pl-6">
                                             <div className="flex items-center gap-3">
@@ -223,16 +243,25 @@ export default function Categorias() {
                 {/* Pagination */}
                 <div className="p-4 border-t border-border-light dark:border-border-dark flex flex-col sm:flex-row items-center justify-between gap-4">
                     <span className="text-sm text-neutral-gray dark:text-gray-400">
-                        Mostrando <span className="font-medium text-gray-900 dark:text-white">{categorias.length}</span> categorías
+                        {filteredCategorias.length > 0 ? (
+                            <>Mostrando <span className="font-medium text-gray-900 dark:text-white">{indexOfFirst + 1}-{Math.min(indexOfLast, filteredCategorias.length)}</span> de <span className="font-medium text-gray-900 dark:text-white">{filteredCategorias.length}</span> categorías</>
+                        ) : (
+                            <>No se encontraron categorías</>
+                        )}
                     </span>
                     <div className="flex gap-2">
                         <button
+                            onClick={goToPreviousPage}
+                            disabled={currentPage === 1}
                             className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled
                         >
                             Anterior
                         </button>
-                        <button className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+                        <button
+                            onClick={goToNextPage}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             Siguiente
                         </button>
                     </div>

@@ -1,54 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+const API_URL = '/api';
 
 export default function AperturaCajas() {
     const navigate = useNavigate();
     const [selectedCaja, setSelectedCaja] = useState(null);
     const [montoInicial, setMontoInicial] = useState('0.00');
+    const [cajas, setCajas] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Sample cash registers data
-    const cajas = [
-        {
-            id: 1,
-            nombre: 'CAJA PRINCIPAL',
-            sucursal: 'Generica',
-            estado: 'LIBRE',
-            ultimoUsuario: null
-        },
-        {
-            id: 2,
-            nombre: 'CAJA 1',
-            sucursal: 'Generica',
-            estado: 'LIBRE',
-            ultimoUsuario: null
-        },
-        {
-            id: 3,
-            nombre: 'CAJA 2',
-            sucursal: 'Centro',
-            estado: 'OCUPADA',
-            ultimoUsuario: 'vendedor1'
-        },
-        {
-            id: 4,
-            nombre: 'CAJA SECUNDARIA',
-            sucursal: 'Norte',
-            estado: 'LIBRE',
-            ultimoUsuario: null
+    useEffect(() => {
+        fetchCajas();
+    }, []);
+
+    const fetchCajas = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/cajas`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setCajas(data.data || data || []);
+            } else {
+                setError('Error al cargar las cajas');
+            }
+        } catch (err) {
+            console.error('Error fetching cajas:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
-    ];
-
-    const handleApertura = (cajaId) => {
-        console.log('Aperturando caja:', cajaId, 'con monto:', montoInicial);
-        // Navigate to POS
-        navigate('/admin/punto-venta');
     };
 
-    const handleOmitir = (cajaId) => {
-        console.log('Aperturando caja sin monto:', cajaId);
-        // Navigate to POS without initial amount
-        navigate('/admin/punto-venta');
+    const handleApertura = async (cajaId) => {
+        try {
+            const token = localStorage.getItem('token');
+            const monto = parseFloat(montoInicial) || 0;
+
+            const response = await fetch(`${API_URL}/cajas/${cajaId}/abrir`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ montoInicial: monto })
+            });
+
+            if (response.ok) {
+                // Save selected caja ID for the POS
+                localStorage.setItem('cajaActiva', cajaId);
+                navigate('/admin/punto-venta');
+            } else {
+                const errorData = await response.json();
+                alert('Error: ' + (errorData.message || errorData.error || 'No se pudo abrir la caja'));
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error al aperturar la caja');
+        }
     };
+
+    const handleOmitir = async (cajaId) => {
+        try {
+            const token = localStorage.getItem('token');
+
+            const response = await fetch(`${API_URL}/cajas/${cajaId}/abrir`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ montoInicial: 0 })
+            });
+
+            if (response.ok) {
+                localStorage.setItem('cajaActiva', cajaId);
+                navigate('/admin/punto-venta');
+            } else {
+                const errorData = await response.json();
+                alert('Error: ' + (errorData.message || errorData.error || 'No se pudo abrir la caja'));
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error al aperturar la caja');
+        }
+    };
+
+    // Map API estado to display status
+    const getEstadoDisplay = (estado) => {
+        const estadoUpper = estado?.toUpperCase();
+        if (estadoUpper === 'CERRADA' || estadoUpper === 'LIBRE') return 'LIBRE';
+        if (estadoUpper === 'ABIERTA' || estadoUpper === 'OCUPADA') return 'OCUPADA';
+        return estado;
+    };
+
+    const isLibre = (caja) => {
+        const estado = caja.estado?.toUpperCase();
+        return estado === 'CERRADA' || estado === 'LIBRE';
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6 max-w-4xl mx-auto">
@@ -98,12 +163,27 @@ export default function AperturaCajas() {
                 </p>
             </div>
 
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400 text-center">
+                    {error}
+                </div>
+            )}
+
+            {/* Empty State */}
+            {cajas.length === 0 && !error && (
+                <div className="text-center py-12">
+                    <span className="material-symbols-outlined text-6xl text-neutral-gray mb-4 block">point_of_sale</span>
+                    <p className="text-neutral-gray text-lg">No hay cajas registradas</p>
+                </div>
+            )}
+
             {/* Cash Registers Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {cajas.map((caja, index) => (
                     <div
                         key={caja.id}
-                        className={`card-animate bg-white dark:bg-background-dark rounded-2xl shadow-sm border overflow-hidden transition-all duration-300 ${caja.estado === 'LIBRE'
+                        className={`card-animate bg-white dark:bg-background-dark rounded-2xl shadow-sm border overflow-hidden transition-all duration-300 ${isLibre(caja)
                             ? 'border-emerald-200 dark:border-emerald-800 hover-lift cursor-pointer'
                             : 'border-border-light dark:border-border-dark opacity-60 cursor-not-allowed'
                             }`}
@@ -112,19 +192,19 @@ export default function AperturaCajas() {
                         {/* Card Header */}
                         <div className="px-6 pt-5 pb-4">
                             <div className="flex items-center justify-between mb-1">
-                                <h3 className={`text-lg font-bold tracking-tight ${caja.estado === 'LIBRE'
+                                <h3 className={`text-lg font-bold tracking-tight ${isLibre(caja)
                                     ? 'text-emerald-600 dark:text-emerald-400'
                                     : 'text-gray-400 dark:text-gray-500'
                                     }`}>
-                                    {caja.nombre} <span className="font-normal">({caja.estado})</span>
+                                    {caja.nombre} <span className="font-normal">({getEstadoDisplay(caja.estado)})</span>
                                 </h3>
-                                {caja.estado === 'LIBRE' && (
+                                {isLibre(caja) && (
                                     <div className="flex items-center gap-1.5 status-pulse">
                                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                                         <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Disponible</span>
                                     </div>
                                 )}
-                                {caja.estado === 'OCUPADA' && (
+                                {!isLibre(caja) && (
                                     <div className="flex items-center gap-1.5">
                                         <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
                                         <span className="text-xs font-medium text-red-600 dark:text-red-400">En uso</span>
@@ -132,17 +212,12 @@ export default function AperturaCajas() {
                                 )}
                             </div>
                             <p className="text-sm text-neutral-gray dark:text-gray-400">
-                                Sucursal: <span className="font-medium text-gray-700 dark:text-gray-300">{caja.sucursal}</span>
+                                Sucursal: <span className="font-medium text-gray-700 dark:text-gray-300">{caja.sucursal?.nombre || 'N/A'}</span>
                             </p>
-                            {caja.estado === 'OCUPADA' && caja.ultimoUsuario && (
-                                <p className="text-xs text-neutral-gray mt-1">
-                                    Usuario: <span className="font-medium">{caja.ultimoUsuario}</span>
-                                </p>
-                            )}
                         </div>
 
                         {/* Form Section - Only for available cash registers */}
-                        {caja.estado === 'LIBRE' && (
+                        {isLibre(caja) && (
                             <div className="px-6 pb-6 border-t border-border-light dark:border-border-dark pt-4">
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                                     Aperturar caja con:
@@ -181,7 +256,7 @@ export default function AperturaCajas() {
                         )}
 
                         {/* Locked Message for occupied registers */}
-                        {caja.estado === 'OCUPADA' && (
+                        {!isLibre(caja) && (
                             <div className="px-6 pb-6 border-t border-border-light dark:border-border-dark pt-4">
                                 <div className="flex items-center gap-2 text-neutral-gray">
                                     <span className="material-symbols-outlined text-[20px]">lock</span>

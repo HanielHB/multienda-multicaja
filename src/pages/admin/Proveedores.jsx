@@ -10,12 +10,39 @@ export default function Proveedores() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const [formData, setFormData] = useState({
         nombre: '',
         direccion: '',
         celular: '',
         contacto: ''
     });
+
+    // Filtrar proveedores
+    const filteredProveedores = proveedores.filter(prov => {
+        const searchLower = searchTerm.toLowerCase();
+        return !searchTerm || 
+            prov.nombre?.toLowerCase().includes(searchLower) ||
+            prov.direccion?.toLowerCase().includes(searchLower) ||
+            prov.celular?.toLowerCase().includes(searchLower) ||
+            prov.contacto?.toLowerCase().includes(searchLower);
+    });
+
+    // Paginación
+    const indexOfLast = currentPage * itemsPerPage;
+    const indexOfFirst = indexOfLast - itemsPerPage;
+    const currentItems = filteredProveedores.slice(indexOfFirst, indexOfLast);
+    const totalPages = Math.ceil(filteredProveedores.length / itemsPerPage);
+
+    const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+    const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+
+    // Reset página al buscar
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
 
     useEffect(() => {
         fetchProveedores();
@@ -192,6 +219,8 @@ export default function Proveedores() {
                             className="w-full pl-10 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
                             placeholder="Buscar proveedor..."
                             type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
@@ -220,7 +249,7 @@ export default function Proveedores() {
                                     </td>
                                 </tr>
                             ) : (
-                                proveedores.map((proveedor, index) => (
+                                currentItems.map((proveedor, index) => (
                                     <tr key={proveedor.id} className="hover:bg-background-light dark:hover:bg-gray-800/50 transition-colors group">
                                         <td className="p-4 pl-6">
                                             <div className="flex items-center gap-3">
@@ -274,8 +303,28 @@ export default function Proveedores() {
                 {/* Pagination */}
                 <div className="p-4 border-t border-border-light dark:border-border-dark flex flex-col sm:flex-row items-center justify-between gap-4">
                     <span className="text-sm text-neutral-gray dark:text-gray-400">
-                        Mostrando <span className="font-medium text-gray-900 dark:text-white">{proveedores.length}</span> proveedores
+                        {filteredProveedores.length > 0 ? (
+                            <>Mostrando <span className="font-medium text-gray-900 dark:text-white">{indexOfFirst + 1}-{Math.min(indexOfLast, filteredProveedores.length)}</span> de <span className="font-medium text-gray-900 dark:text-white">{filteredProveedores.length}</span> proveedores</>
+                        ) : (
+                            <>No se encontraron proveedores</>
+                        )}
                     </span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={goToPreviousPage}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Anterior
+                        </button>
+                        <button
+                            onClick={goToNextPage}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Siguiente
+                        </button>
+                    </div>
                 </div>
             </div>
 

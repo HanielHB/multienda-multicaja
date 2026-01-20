@@ -10,12 +10,39 @@ export default function Clientes() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const [formData, setFormData] = useState({
         nombre: '',
         email: '',
         direccion: '',
         celular: ''
     });
+
+    // Filtrar clientes
+    const filteredClientes = clientes.filter(cli => {
+        const searchLower = searchTerm.toLowerCase();
+        return !searchTerm || 
+            cli.nombre?.toLowerCase().includes(searchLower) ||
+            cli.email?.toLowerCase().includes(searchLower) ||
+            cli.direccion?.toLowerCase().includes(searchLower) ||
+            cli.celular?.toLowerCase().includes(searchLower);
+    });
+
+    // Paginación
+    const indexOfLast = currentPage * itemsPerPage;
+    const indexOfFirst = indexOfLast - itemsPerPage;
+    const currentItems = filteredClientes.slice(indexOfFirst, indexOfLast);
+    const totalPages = Math.ceil(filteredClientes.length / itemsPerPage);
+
+    const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+    const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+
+    // Reset página al buscar
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
 
     useEffect(() => {
         fetchClientes();
@@ -192,6 +219,8 @@ export default function Clientes() {
                             className="w-full pl-10 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
                             placeholder="Buscar cliente..."
                             type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
@@ -220,7 +249,7 @@ export default function Clientes() {
                                     </td>
                                 </tr>
                             ) : (
-                                clientes.map((cliente, index) => (
+                                currentItems.map((cliente, index) => (
                                     <tr key={cliente.id} className="hover:bg-background-light dark:hover:bg-gray-800/50 transition-colors group">
                                         <td className="p-4 pl-6">
                                             <div className="flex items-center gap-3">
@@ -274,8 +303,28 @@ export default function Clientes() {
                 {/* Pagination */}
                 <div className="p-4 border-t border-border-light dark:border-border-dark flex flex-col sm:flex-row items-center justify-between gap-4">
                     <span className="text-sm text-neutral-gray dark:text-gray-400">
-                        Mostrando <span className="font-medium text-gray-900 dark:text-white">{clientes.length}</span> clientes
+                        {filteredClientes.length > 0 ? (
+                            <>Mostrando <span className="font-medium text-gray-900 dark:text-white">{indexOfFirst + 1}-{Math.min(indexOfLast, filteredClientes.length)}</span> de <span className="font-medium text-gray-900 dark:text-white">{filteredClientes.length}</span> clientes</>
+                        ) : (
+                            <>No se encontraron clientes</>
+                        )}
                     </span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={goToPreviousPage}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Anterior
+                        </button>
+                        <button
+                            onClick={goToNextPage}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className="px-3 py-1.5 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Siguiente
+                        </button>
+                    </div>
                 </div>
             </div>
 

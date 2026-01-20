@@ -159,14 +159,14 @@ export default function Dashboard() {
                     <div className="flex items-start justify-between mb-4">
                         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Ventas</span>
                         <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-lg">$</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-lg">Bs.</span>
                         </div>
                     </div>
                     {isLoading ? (
                         <div className="skeleton h-8 w-32 rounded-lg mb-2"></div>
                     ) : (
                         <p className="stat-value text-2xl font-black text-gray-900 dark:text-white" style={{ animationDelay: '0.3s' }}>
-                            S/ {formatCurrency(stats.ventas)}
+                            Bs. {formatCurrency(stats.ventas)}
                         </p>
                     )}
                     <div className="flex items-center gap-1 mt-2">
@@ -218,7 +218,7 @@ export default function Dashboard() {
                         <div className="skeleton h-8 w-28 rounded-lg mb-2"></div>
                     ) : (
                         <p className="stat-value text-2xl font-black text-gray-900 dark:text-white" style={{ animationDelay: '0.5s' }}>
-                            S/ {formatCurrency(stats.ganancias)}
+                            Bs. {formatCurrency(stats.ganancias)}
                         </p>
                     )}
                     <div className="flex items-center gap-1 mt-2">
@@ -285,7 +285,7 @@ export default function Dashboard() {
                         <div className="skeleton h-12 w-40 rounded-lg mb-4"></div>
                     ) : (
                         <p className="stat-value text-4xl font-black text-gray-900 dark:text-white mb-2" style={{ animationDelay: '0.6s' }}>
-                            S/ {formatCurrency(stats.ventas)}
+                            Bs. {formatCurrency(stats.ventas)}
                         </p>
                     )}
                     <div className="flex items-center gap-2 mb-6">
@@ -409,7 +409,7 @@ export default function Dashboard() {
                                         </td>
                                         <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.usuario}</td>
                                         <td className={`py-3 px-2 text-sm font-semibold text-right ${mov.monto >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                            {mov.monto >= 0 ? '+' : ''}S/ {formatCurrency(Math.abs(mov.monto))}
+                                            {mov.monto >= 0 ? '+' : ''}Bs. {formatCurrency(Math.abs(mov.monto))}
                                         </td>
                                     </tr>
                                 ))}
@@ -471,7 +471,7 @@ export default function Dashboard() {
                                             </span>
                                         </div>
                                         <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                                            S/ {formatCurrency(producto.monto)}
+                                            Bs. {formatCurrency(producto.monto)}
                                         </span>
                                     </div>
                                     <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">

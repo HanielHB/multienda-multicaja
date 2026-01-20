@@ -282,7 +282,7 @@ export default function PuntoVenta() {
                                     <div>
                                         <h3 className="font-bold text-gray-900 dark:text-white text-sm">{item.nombre}</h3>
                                         <p className="text-xs text-gray-500">
-                                            precio unit: <span className="text-emerald-600 font-semibold">s/ {item.precioUnit.toFixed(2)}</span>
+                                            precio unit: <span className="text-emerald-600 font-semibold">Bs. {item.precioUnit.toFixed(2)}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -309,7 +309,7 @@ export default function PuntoVenta() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="font-bold text-gray-900 dark:text-white text-sm">
-                                            s/ {(item.precioUnit * item.cantidad).toFixed(2)}
+                                            Bs. {(item.precioUnit * item.cantidad).toFixed(2)}
                                         </span>
                                         <button
                                             onClick={() => removeItem(item.id)}
@@ -346,7 +346,7 @@ export default function PuntoVenta() {
                                 </div>
                                 <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">{product.nombre}</h3>
                                 <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                                    s/ {product.precio.toFixed(2)}
+                                    Bs. {product.precio.toFixed(2)}
                                 </p>
                             </button>
                         ))}
@@ -390,7 +390,7 @@ export default function PuntoVenta() {
                             className="total-btn w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-2xl shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-600 transition-all btn-bounce"
                         >
                             <span className="heart text-2xl">💚</span>
-                            <span>s/ {total.toFixed(2)}</span>
+                            <span>Bs. {total.toFixed(2)}</span>
                         </button>
                     </div>
                 </aside>
@@ -485,15 +485,15 @@ export default function PuntoVenta() {
                                 <div className="space-y-3 mb-6">
                                     <div className="flex justify-between items-center">
                                         <span className="font-bold text-gray-900 dark:text-white">Total:</span>
-                                        <span className="font-black text-lg text-gray-900 dark:text-white">S/ {total.toFixed(2)}</span>
+                                        <span className="font-black text-lg text-gray-900 dark:text-white">Bs. {total.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-500">Vuelto:</span>
-                                        <span className="font-bold text-emerald-600">S/ {vuelto.toFixed(2)}</span>
+                                        <span className="font-bold text-emerald-600">Bs. {vuelto.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-500">Restante:</span>
-                                        <span className={`font-bold ${restante > 0 ? 'text-red-500' : 'text-gray-400'}`}>S/ {restante.toFixed(2)}</span>
+                                        <span className={`font-bold ${restante > 0 ? 'text-red-500' : 'text-gray-400'}`}>Bs. {restante.toFixed(2)}</span>
                                     </div>
                                 </div>
 
@@ -753,11 +753,11 @@ export default function PuntoVenta() {
                         <div className="flex justify-between items-center px-8 py-4 border-b border-gray-200 dark:border-gray-700">
                             <div>
                                 <span className="text-sm text-gray-500 dark:text-gray-400">Ventas Totales: </span>
-                                <span className="font-bold text-gray-900 dark:text-white">S/ 30.00</span>
+                                <span className="font-bold text-gray-900 dark:text-white">Bs. 30.00</span>
                             </div>
                             <div>
                                 <span className="text-sm text-gray-500 dark:text-gray-400">Efectivo en CAJA: </span>
-                                <span className="font-bold text-gray-900 dark:text-white">S/ 130.00</span>
+                                <span className="font-bold text-gray-900 dark:text-white">Bs. 130.00</span>
                             </div>
                         </div>
 
@@ -771,24 +771,24 @@ export default function PuntoVenta() {
                                         <div className="space-y-2 text-sm">
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Fondo de caja:</span>
-                                                <span className="text-gray-900 dark:text-white">S/ 100.00</span>
+                                                <span className="text-gray-900 dark:text-white">Bs. 100.00</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Ventas en efectivo:</span>
-                                                <span className="text-gray-900 dark:text-white">S/ 30.00</span>
+                                                <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Ingresos varios:</span>
-                                                <span className="text-gray-900 dark:text-white">S/ 0.00</span>
+                                                <span className="text-gray-900 dark:text-white">Bs. 0.00</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">Gastos varios:</span>
-                                                <span className="text-red-500 font-medium">-S/ 0.00</span>
+                                                <span className="text-red-500 font-medium">-Bs. 0.00</span>
                                             </div>
                                             <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-3">
                                                 <div className="flex justify-between font-bold">
                                                     <span></span>
-                                                    <span className="text-gray-900 dark:text-white">S/ 130.00</span>
+                                                    <span className="text-gray-900 dark:text-white">Bs. 130.00</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -800,12 +800,12 @@ export default function PuntoVenta() {
                                         <div className="space-y-2 text-sm">
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500">En Efectivo:</span>
-                                                <span className="text-gray-900 dark:text-white">S/ 30.00</span>
+                                                <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
                                             </div>
                                             <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-3">
                                                 <div className="flex justify-between font-bold">
                                                     <span></span>
-                                                    <span className="text-gray-900 dark:text-white">S/ 30.00</span>
+                                                    <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -860,7 +860,7 @@ export default function PuntoVenta() {
                                 Efectivo esperado en caja:
                             </h2>
                             <p className="text-3xl font-black text-gray-900 dark:text-white mb-8">
-                                S/ 130.00
+                                Bs. 130.00
                             </p>
 
                             {/* Input Section */}
@@ -881,7 +881,7 @@ export default function PuntoVenta() {
                             {/* Difference */}
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                                 diferencia: <span className={`font-bold ${(parseFloat(efectivoEnCaja) || 0) - 130 < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                    {(parseFloat(efectivoEnCaja) || 0) - 130 < 0 ? '-' : ''}S/ {Math.abs((parseFloat(efectivoEnCaja) || 0) - 130).toFixed(2)}
+                                    {(parseFloat(efectivoEnCaja) || 0) - 130 < 0 ? '-' : ''}Bs. {Math.abs((parseFloat(efectivoEnCaja) || 0) - 130).toFixed(2)}
                                 </span>
                             </p>
 
