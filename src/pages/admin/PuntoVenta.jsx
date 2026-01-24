@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_URL = '/api';
+
 export default function PuntoVenta() {
     const navigate = useNavigate();
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -23,37 +25,132 @@ export default function PuntoVenta() {
     const [showCerrarCajaModal, setShowCerrarCajaModal] = useState(false);
     const [showCerrarTurnoModal, setShowCerrarTurnoModal] = useState(false);
     const [efectivoEnCaja, setEfectivoEnCaja] = useState('');
-    const [cart, setCart] = useState([
-        {
-            id: 1,
-            nombre: 'Producto de prueba',
-            precioUnit: 10.00,
-            cantidad: 1
-        }
-    ]);
+    const [cart, setCart] = useState([]);
 
-    // Current cash register info
-    const cajaInfo = {
-        sucursal: 'Generica',
-        caja: 'Caja principal',
-        usuario: 'superadmin'
+    // State for cliente selection
+    const [clientes, setClientes] = useState([]);
+    const [selectedCliente, setSelectedCliente] = useState(null);
+    const [searchCliente, setSearchCliente] = useState('');
+    const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+
+    // State for stock alert modal
+    const [showStockModal, setShowStockModal] = useState(false);
+    const [stockAlertMessage, setStockAlertMessage] = useState('');
+
+    // State for ticket modal
+    const [showTicketModal, setShowTicketModal] = useState(false);
+    const [showVentaExitosaModal, setShowVentaExitosaModal] = useState(false);
+    const [ventaCompletada, setVentaCompletada] = useState(null);
+
+    // State for API data
+    const [productos, setProductos] = useState([]);
+    const [cajaInfo, setCajaInfo] = useState({
+        sucursal: 'Cargando...',
+        caja: 'Cargando...',
+        usuario: 'usuario'
+    });
+    const [loading, setLoading] = useState(true);
+
+    // Fetch products, clientes and caja info on mount
+    useEffect(() => {
+        fetchProductos();
+        fetchClientes();
+        loadCajaInfo();
+    }, []);
+
+    const fetchClientes = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/clientes?limit=1000`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                const clientesData = data.data || (Array.isArray(data) ? data : []);
+                setClientes(clientesData);
+            }
+        } catch (err) {
+            console.error('Error fetching clientes:', err);
+        }
     };
 
-    // Sample products for the center grid
-    const productos = [
-        { id: 1, nombre: 'Zapatillas Running Pro', precio: 89.99, icon: 'directions_run', color: 'bg-blue-500' },
-        { id: 2, nombre: 'Botas de Montaña', precio: 125.00, icon: 'hiking', color: 'bg-amber-600' },
-        { id: 3, nombre: 'Sandalias Verano', precio: 45.50, icon: 'sunny', color: 'bg-yellow-500' },
-        { id: 4, nombre: 'Zapatos Formales', precio: 150.00, icon: 'business_center', color: 'bg-gray-700' },
-        { id: 5, nombre: 'Tenis Casuales', precio: 75.00, icon: 'mood', color: 'bg-green-500' },
-        { id: 6, nombre: 'Zapatillas Skate', precio: 95.00, icon: 'skateboarding', color: 'bg-purple-500' },
-        { id: 7, nombre: 'Pantuflas Comfort', precio: 35.00, icon: 'home', color: 'bg-pink-400' },
-        { id: 8, nombre: 'Botas Lluvia', precio: 55.00, icon: 'water_drop', color: 'bg-cyan-500' },
-        { id: 9, nombre: 'Zapatos Niños', precio: 40.00, icon: 'child_care', color: 'bg-orange-400' },
-        { id: 10, nombre: 'Deportivas Premium', precio: 180.00, icon: 'fitness_center', color: 'bg-red-500' },
-        { id: 11, nombre: 'Mocasines Clasicos', precio: 110.00, icon: 'star', color: 'bg-indigo-500' },
-        { id: 12, nombre: 'Chanclas Playa', precio: 25.00, icon: 'beach_access', color: 'bg-teal-400' },
-    ];
+    const fetchProductos = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/productos?limit=1000`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const productosData = data.data || (Array.isArray(data) ? data : []);
+                // Map products to expected format with icons
+                const mapped = productosData.map(p => ({
+                    id: p.id,
+                    nombre: p.nombre,
+                    precio: parseFloat(p.precioVenta) || parseFloat(p.precio) || 0,
+                    stock: parseInt(p.stockActual) || parseInt(p.stock) || 0,
+                    icon: getProductIcon(p.categoriaId),
+                    color: getProductColor(p.categoriaId)
+                }));
+                setProductos(mapped);
+            }
+        } catch (err) {
+            console.error('Error fetching productos:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadCajaInfo = async () => {
+        try {
+            const cajaActivaId = localStorage.getItem('cajaActiva');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+            if (cajaActivaId) {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/cajas/${cajaActivaId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const caja = await response.json();
+                    setCajaInfo({
+                        sucursal: caja.sucursal?.nombre || 'N/A',
+                        caja: caja.nombre || 'N/A',
+                        usuario: user.nombres || user.email || 'usuario'
+                    });
+                } else {
+                    // Fallback if caja fetch fails
+                    setCajaInfo({
+                        sucursal: 'Sucursal',
+                        caja: 'Caja',
+                        usuario: user.nombres || user.email || 'usuario'
+                    });
+                }
+            } else {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                setCajaInfo({
+                    sucursal: 'Sin Caja',
+                    caja: 'Sin Caja Activa',
+                    usuario: user.nombres || user.email || 'usuario'
+                });
+            }
+        } catch (err) {
+            console.error('Error loading caja info:', err);
+        }
+    };
+
+    // Helper functions for product display
+    const getProductIcon = (categoriaId) => {
+        const icons = ['category', 'shopping_bag', 'inventory_2', 'store', 'sell', 'local_offer'];
+        return icons[categoriaId % icons.length] || 'category';
+    };
+
+    const getProductColor = (categoriaId) => {
+        const colors = ['bg-blue-500', 'bg-amber-600', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500', 'bg-orange-500', 'bg-indigo-500'];
+        return colors[categoriaId % colors.length] || 'bg-gray-500';
+    };
 
     // Update time every second
     useEffect(() => {
@@ -82,6 +179,15 @@ export default function PuntoVenta() {
     // Cart handlers
     const addToCart = (product) => {
         const existingItem = cart.find(item => item.id === product.id);
+        const currentQty = existingItem ? existingItem.cantidad : 0;
+
+        // Validar stock disponible
+        if (currentQty >= product.stock) {
+            setStockAlertMessage(`Stock insuficiente. Solo hay ${product.stock} unidades de "${product.nombre}".`);
+            setShowStockModal(true);
+            return;
+        }
+
         if (existingItem) {
             setCart(cart.map(item =>
                 item.id === product.id
@@ -93,6 +199,7 @@ export default function PuntoVenta() {
                 id: product.id,
                 nombre: product.nombre,
                 precioUnit: product.precio,
+                stock: product.stock,
                 cantidad: 1
             }]);
         }
@@ -101,7 +208,15 @@ export default function PuntoVenta() {
     const updateQuantity = (id, delta) => {
         setCart(cart.map(item => {
             if (item.id === id) {
-                const newQty = Math.max(1, item.cantidad + delta);
+                const newQty = item.cantidad + delta;
+                // No permitir menos de 1
+                if (newQty < 1) return item;
+                // No permitir más del stock disponible
+                if (newQty > item.stock) {
+                    setStockAlertMessage(`Stock insuficiente. Solo hay ${item.stock} unidades de "${item.nombre}".`);
+                    setShowStockModal(true);
+                    return item;
+                }
                 return { ...item, cantidad: newQty };
             }
             return item;
@@ -131,11 +246,89 @@ export default function PuntoVenta() {
     };
 
     // Handle complete payment
-    const handleCobrar = () => {
-        console.log('Cobrando:', { tipoDocumento, numeroFactura, clienteNombre, metodoPago: selectedPayment, total, efectivo: efectivoNum, vuelto });
-        setShowPaymentModal(false);
-        setCart([]);
-        setMontoEfectivo('');
+    const handleCobrar = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const cajaId = parseInt(localStorage.getItem('cajaActiva')) || null;
+
+            // Construir items para el backend
+            const items = cart.map(item => ({
+                productoId: item.id,
+                nombre: item.nombre,
+                cantidad: item.cantidad,
+                precioUnitario: item.precioUnit,
+                subtotal: item.precioUnit * item.cantidad
+            }));
+
+            const ventaData = {
+                tipoDocumento: tipoDocumento,
+                numeroDocumento: numeroFactura,
+                clienteId: selectedCliente?.id || null,
+                clienteNombre: selectedCliente?.nombre || clienteNombre,
+                cajaId: cajaId,
+                usuarioId: user.id,
+                metodoPago: selectedPayment,
+                montoRecibido: efectivoNum,
+                vuelto: vuelto,
+                subtotal: total,
+                descuento: 0,
+                total: total,
+                items: items
+            };
+
+            const response = await fetch(`${API_URL}/ventas`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(ventaData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+
+                // Guardar datos de la venta para el ticket
+                setVentaCompletada({
+                    numeroDocumento: numeroFactura,
+                    tipoDocumento: tipoDocumento,
+                    fecha: new Date(),
+                    cliente: selectedCliente?.nombre || clienteNombre,
+                    vendedor: user.nombres || user.email || 'Vendedor',
+                    sucursal: cajaInfo.sucursal,
+                    caja: cajaInfo.caja,
+                    items: cart.map(item => ({
+                        nombre: item.nombre,
+                        cantidad: item.cantidad,
+                        precioUnit: item.precioUnit,
+                        subtotal: item.precioUnit * item.cantidad
+                    })),
+                    subtotal: total,
+                    descuento: 0,
+                    total: total,
+                    metodoPago: selectedPayment,
+                    montoRecibido: efectivoNum,
+                    vuelto: vuelto
+                });
+
+                setShowPaymentModal(false);
+                setShowVentaExitosaModal(true);
+                setCart([]);
+                setMontoEfectivo('');
+                setSelectedCliente(null);
+                // Incrementar número de factura (simple)
+                const numParts = numeroFactura.split('-');
+                const nextNum = parseInt(numParts[1] || 0) + 1;
+                setNumeroFactura(`${numParts[0]}-${nextNum}`);
+            } else {
+                const errorData = await response.json();
+                alert('Error: ' + (errorData.message || 'No se pudo registrar la venta'));
+            }
+        } catch (err) {
+            console.error('Error al cobrar:', err);
+            alert('Error al procesar la venta');
+        }
     };
 
     // Filter products based on search
@@ -251,23 +444,54 @@ export default function PuntoVenta() {
                     </div>
 
                     {/* Search Fields */}
-                    <div className="p-4 space-y-3 border-b border-gray-100 dark:border-gray-800">
+                    <div className="p-4 space-y-3 border-b border-gray-100 dark:border-gray-800 relative">
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 value={searchCode}
                                 onChange={(e) => setSearchCode(e.target.value)}
                                 className="input-focus w-16 px-3 py-2.5 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
-                                placeholder="1"
+                                placeholder="Cod"
                             />
                             <input
                                 type="text"
                                 value={searchProduct}
                                 onChange={(e) => setSearchProduct(e.target.value)}
                                 className="input-focus flex-1 px-4 py-2.5 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
-                                placeholder="buscar..."
+                                placeholder="Buscar producto..."
                             />
                         </div>
+
+                        {/* Search Results Dropdown - Solo aparece al escribir */}
+                        {searchProduct.length > 0 && (
+                            <div className="absolute left-4 right-4 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-64 overflow-y-auto z-20">
+                                {filteredProducts.length === 0 ? (
+                                    <div className="p-3 text-center text-gray-500 text-sm">
+                                        No se encontraron productos
+                                    </div>
+                                ) : (
+                                    filteredProducts.map(product => (
+                                        <button
+                                            key={product.id}
+                                            onClick={() => {
+                                                addToCart(product);
+                                                setSearchProduct('');
+                                            }}
+                                            className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                        >
+                                            <div className={`w-8 h-8 ${product.color} rounded-lg flex items-center justify-center text-white`}>
+                                                <span className="material-symbols-outlined text-sm">{product.icon}</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.nombre}</p>
+                                                <p className="text-xs text-emerald-600 font-bold">Bs. {product.precio.toFixed(2)}</p>
+                                            </div>
+                                            <span className="material-symbols-outlined text-emerald-500 text-lg">add_circle</span>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Cart Items */}
@@ -457,12 +681,76 @@ export default function PuntoVenta() {
                                     </button>
                                 </div>
 
-                                {/* Client */}
-                                <div className="text-center mb-8">
-                                    <p className="text-gray-900 dark:text-white font-medium text-lg">{clienteNombre}</p>
-                                    <button className="mt-2 w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-600 mx-auto hover:bg-cyan-200 transition-colors">
-                                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                                    </button>
+                                {/* Client Selector */}
+                                <div className="relative mb-6">
+                                    <label className="block text-sm text-gray-500 mb-2 text-center">Cliente</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={selectedCliente ? selectedCliente.nombre : searchCliente}
+                                            onChange={(e) => {
+                                                setSearchCliente(e.target.value);
+                                                setSelectedCliente(null);
+                                                setShowClienteDropdown(true);
+                                            }}
+                                            onFocus={() => setShowClienteDropdown(true)}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-center font-medium"
+                                            placeholder="Buscar cliente..."
+                                        />
+                                        {selectedCliente && (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedCliente(null);
+                                                    setSearchCliente('');
+                                                }}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">close</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Dropdown de clientes */}
+                                    {showClienteDropdown && !selectedCliente && (
+                                        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-30">
+                                            {clientes
+                                                .filter(c =>
+                                                    !searchCliente ||
+                                                    c.nombre?.toLowerCase().includes(searchCliente.toLowerCase()) ||
+                                                    c.telefono?.includes(searchCliente) ||
+                                                    c.nit?.includes(searchCliente)
+                                                )
+                                                .slice(0, 10)
+                                                .map(cliente => (
+                                                    <button
+                                                        key={cliente.id}
+                                                        onClick={() => {
+                                                            setSelectedCliente(cliente);
+                                                            setSearchCliente('');
+                                                            setShowClienteDropdown(false);
+                                                        }}
+                                                        className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                                    >
+                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                                            {cliente.nombre?.charAt(0)?.toUpperCase() || 'C'}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{cliente.nombre}</p>
+                                                            <p className="text-xs text-gray-500">{cliente.telefono || cliente.nit || ''}</p>
+                                                        </div>
+                                                    </button>
+                                                ))
+                                            }
+                                            {clientes.filter(c =>
+                                                !searchCliente ||
+                                                c.nombre?.toLowerCase().includes(searchCliente.toLowerCase())
+                                            ).length === 0 && (
+                                                    <div className="p-3 text-center text-gray-500 text-sm">
+                                                        No se encontraron clientes
+                                                    </div>
+                                                )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Payment Amount */}
@@ -937,6 +1225,254 @@ export default function PuntoVenta() {
                     Retirar dinero
                 </button>
             </footer>
+
+            {/* Modal Stock Insuficiente */}
+            {showStockModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setShowStockModal(false)}
+                    />
+                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full scale-in">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+                                <span className="material-symbols-outlined text-4xl text-red-500">inventory_2</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Stock Insuficiente</h3>
+                            <p className="text-gray-600 dark:text-gray-400 mb-6">{stockAlertMessage}</p>
+                            <button
+                                onClick={() => setShowStockModal(false)}
+                                className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold hover:from-primary/90 hover:to-blue-700 transition-all"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Venta Exitosa */}
+            {showVentaExitosaModal && ventaCompletada && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setShowVentaExitosaModal(false)}
+                    />
+                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-sm w-full scale-in">
+                        <div className="flex flex-col items-center text-center">
+                            {/* Success Icon */}
+                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
+                                <span className="material-symbols-outlined text-5xl text-white">check</span>
+                            </div>
+
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Venta Exitosa!</h3>
+                            <p className="text-gray-500 dark:text-gray-400 mb-2">
+                                {ventaCompletada.tipoDocumento.charAt(0).toUpperCase() + ventaCompletada.tipoDocumento.slice(1)}: <span className="font-bold text-primary">{ventaCompletada.numeroDocumento}</span>
+                            </p>
+                            <p className="text-3xl font-bold text-emerald-500 mb-6">Bs. {ventaCompletada.total.toFixed(2)}</p>
+
+                            {/* Buttons */}
+                            <div className="w-full space-y-3">
+                                <button
+                                    onClick={() => {
+                                        setShowVentaExitosaModal(false);
+                                        setShowTicketModal(true);
+                                    }}
+                                    className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
+                                >
+                                    <span className="material-symbols-outlined">receipt_long</span>
+                                    Ver e Imprimir Ticket
+                                </button>
+                                <button
+                                    onClick={() => setShowVentaExitosaModal(false)}
+                                    className="w-full py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Ticket de Venta */}
+            {showTicketModal && ventaCompletada && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setShowTicketModal(false)}
+                    />
+                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto scale-in">
+                        {/* Ticket Content for Printing */}
+                        <div id="ticket-print" className="p-6 bg-white">
+                            {/* Header */}
+                            <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                <div className="border-2 border-gray-800 px-4 py-2 inline-block mb-2">
+                                    <span className="text-xs">TU LOGO</span>
+                                    <p className="font-bold text-lg">AQUÍ</p>
+                                </div>
+                                <p className="font-bold text-lg">{ventaCompletada.sucursal}</p>
+                                <p className="text-sm text-gray-500">-</p>
+                            </div>
+
+                            {/* Document Info */}
+                            <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                <p className="font-bold capitalize">{ventaCompletada.tipoDocumento}</p>
+                                <p className="text-primary font-bold">{ventaCompletada.numeroDocumento}</p>
+                                <div className="flex justify-between text-xs mt-2">
+                                    <span><strong>FECHA:</strong> {ventaCompletada.fecha.toLocaleDateString('es-ES')}</span>
+                                    <span><strong>HORA:</strong> {ventaCompletada.fecha.toLocaleTimeString('es-ES')}</span>
+                                </div>
+                                <p className="text-xs mt-1"><strong>CAJERO:</strong> {ventaCompletada.vendedor}</p>
+                            </div>
+
+                            {/* Client Info */}
+                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                <p className="font-bold text-sm">CLIENTE:</p>
+                                <p className="text-sm">NOMBRES: {ventaCompletada.cliente}</p>
+                                <p className="text-sm">DOC.ID: -</p>
+                                <p className="text-sm">DIRECC.: -</p>
+                            </div>
+
+                            {/* Products Table */}
+                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                <div className="text-xs font-bold border-b border-gray-300 pb-1 mb-2">
+                                    <div className="flex justify-between">
+                                        <span className="w-1/2">CÓDIGO - DESCRIPCIÓN</span>
+                                        <span className="w-1/6 text-center">CANT.</span>
+                                        <span className="w-1/6 text-right">PRECIO</span>
+                                        <span className="w-1/6 text-right">TOTAL</span>
+                                    </div>
+                                </div>
+                                {ventaCompletada.items.map((item, index) => (
+                                    <div key={index} className="text-xs mb-1">
+                                        <p className="truncate">{item.nombre}</p>
+                                        <div className="flex justify-between">
+                                            <span className="w-1/2"></span>
+                                            <span className="w-1/6 text-center">{item.cantidad}</span>
+                                            <span className="w-1/6 text-right">{item.precioUnit.toFixed(2)}</span>
+                                            <span className="w-1/6 text-right">{item.subtotal.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Totals */}
+                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                <div className="flex justify-between text-sm">
+                                    <span className="font-bold">SUBTOTAL: Bs.</span>
+                                    <span>{ventaCompletada.subtotal.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="font-bold">DESCUENTO: Bs.</span>
+                                    <span>{ventaCompletada.descuento.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-lg font-bold mt-2">
+                                    <span>TOTAL: Bs.</span>
+                                    <span>{ventaCompletada.total.toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            {/* Payment Info */}
+                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4 text-center">
+                                <p className="font-bold text-sm">FORMA DE PAGO:</p>
+                                <div className="flex justify-between text-sm mt-1">
+                                    <span className="capitalize">{ventaCompletada.metodoPago}: Bs.</span>
+                                    <span>{ventaCompletada.montoRecibido.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span>Vuelto: Bs.</span>
+                                    <span>{ventaCompletada.vuelto.toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="text-center text-xs text-gray-500">
+                                <p>¡Gracias por su compra!</p>
+                                <p className="mt-2">{ventaCompletada.sucursal} - {ventaCompletada.caja}</p>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="p-4 border-t border-gray-200 flex gap-3 print:hidden">
+                            <button
+                                onClick={() => setShowTicketModal(false)}
+                                className="flex-1 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-all"
+                            >
+                                Cerrar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const ticketContent = document.getElementById('ticket-print').innerHTML;
+                                    const printWindow = window.open('', '_blank', 'width=300,height=600');
+                                    printWindow.document.write(`
+                                        <html>
+                                            <head>
+                                                <title>Ticket de Venta</title>
+                                                <style>
+                                                    @page {
+                                                        size: 80mm auto;
+                                                        margin: 0;
+                                                    }
+                                                    * { 
+                                                        margin: 0; 
+                                                        padding: 0; 
+                                                        box-sizing: border-box; 
+                                                        font-family: 'Courier New', monospace; 
+                                                    }
+                                                    body { 
+                                                        width: 80mm;
+                                                        max-width: 80mm;
+                                                        padding: 5mm;
+                                                        font-size: 10px;
+                                                        line-height: 1.4;
+                                                    }
+                                                    .text-center { text-align: center; }
+                                                    .font-bold { font-weight: bold; }
+                                                    .text-xs { font-size: 9px; }
+                                                    .text-sm { font-size: 10px; }
+                                                    .text-lg { font-size: 12px; }
+                                                    .border-b-2, .border-dashed, .border-b, .border-2 { border: none; }
+                                                    .border-gray-300, .border-gray-800 { border: none; }
+                                                    .pb-4 { padding-bottom: 8px; }
+                                                    .mb-4 { margin-bottom: 8px; }
+                                                    .mb-2 { margin-bottom: 4px; }
+                                                    .mb-1 { margin-bottom: 2px; }
+                                                    .mt-2 { margin-top: 4px; }
+                                                    .mt-1 { margin-top: 2px; }
+                                                    .p-6 { padding: 0; }
+                                                    .flex { display: flex; }
+                                                    .justify-between { justify-content: space-between; }
+                                                    .capitalize { text-transform: capitalize; }
+                                                    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                                                    .text-primary { color: #000; }
+                                                    .text-gray-500, .text-gray-600, .text-gray-400 { color: #333; }
+                                                    .w-1\\/2 { width: 50%; }
+                                                    .w-1\\/6 { width: 16.666%; }
+                                                    .text-right { text-align: right; }
+                                                    .inline-block { display: inline-block; }
+                                                    .px-4 { padding-left: 8px; padding-right: 8px; }
+                                                    .py-2 { padding-top: 4px; padding-bottom: 4px; }
+                                                    .pb-1 { padding-bottom: 2px; }
+                                                </style>
+                                            </head>
+                                            <body>${ticketContent}</body>
+                                        </html>
+                                    `);
+                                    printWindow.document.close();
+                                    printWindow.focus();
+                                    printWindow.print();
+                                    printWindow.close();
+                                }}
+                                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
+                            >
+                                <span className="material-symbols-outlined text-lg">print</span>
+                                Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

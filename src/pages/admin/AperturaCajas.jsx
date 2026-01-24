@@ -43,15 +43,17 @@ export default function AperturaCajas() {
     const handleApertura = async (cajaId) => {
         try {
             const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const usuarioId = user.id;
             const monto = parseFloat(montoInicial) || 0;
 
             const response = await fetch(`${API_URL}/cajas/${cajaId}/abrir`, {
-                method: 'PATCH',
+                method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ montoInicial: monto })
+                body: JSON.stringify({ montoInicial: monto, usuarioId })
             });
 
             if (response.ok) {
@@ -71,14 +73,16 @@ export default function AperturaCajas() {
     const handleOmitir = async (cajaId) => {
         try {
             const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const usuarioId = user.id;
 
             const response = await fetch(`${API_URL}/cajas/${cajaId}/abrir`, {
-                method: 'PATCH',
+                method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ montoInicial: 0 })
+                body: JSON.stringify({ montoInicial: 0, usuarioId })
             });
 
             if (response.ok) {
