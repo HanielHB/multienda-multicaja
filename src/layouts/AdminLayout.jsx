@@ -11,8 +11,8 @@ export default function AdminLayout() {
     <div className="bg-background-light dark:bg-background-dark font-display text-dark-charcoal dark:text-background-light">
       <div className="relative flex min-h-screen w-full">
 
-        {/* SideNavBar */}
-        <aside className="flex h-screen min-h-full w-64 flex-col justify-between border-r border-border-light bg-white p-4 dark:border-border-dark dark:bg-background-dark">
+        {/* SideNavBar - Fixed */}
+        <aside className="fixed top-0 left-0 h-screen w-64 flex flex-col justify-between border-r border-border-light bg-white p-4 dark:border-border-dark dark:bg-background-dark overflow-y-auto z-40">
           <div className="flex flex-col gap-8">
             <div className="flex items-center gap-3 px-2">
               <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -242,8 +242,8 @@ export default function AdminLayout() {
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 p-6 lg:p-10">
+        {/* Main Content - with left margin to account for fixed sidebar */}
+        <main className="flex-1 ml-64 p-6 lg:p-10 min-h-screen overflow-y-auto">
           <Outlet />
         </main>
       </div>

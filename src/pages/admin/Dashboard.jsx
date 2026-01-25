@@ -1,48 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+
+const API_URL = '/api';
 
 export default function Dashboard() {
     const [activeFilter, setActiveFilter] = useState('todo');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Simulate loading
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
-
-    // Sample data
-    const stats = {
-        ventas: 15420.50,
-        productosVendidos: 347,
-        ganancias: 4250.75,
-        cambioVentas: 12.5,
-        cambioProductos: 8.3,
-        cambioGanancias: -2.1
-    };
-
-    const movimientosCaja = [
-        { id: 1, fecha: '31/12/2025', caja: 'Caja Principal', tipo: 'Ingreso', usuario: 'admin', monto: 500.00 },
-        { id: 2, fecha: '31/12/2025', caja: 'Caja 1', tipo: 'Venta', usuario: 'vendedor1', monto: 125.50 },
-        { id: 3, fecha: '31/12/2025', caja: 'Caja Principal', tipo: 'Retiro', usuario: 'admin', monto: -200.00 },
-        { id: 4, fecha: '30/12/2025', caja: 'Caja 2', tipo: 'Venta', usuario: 'vendedor2', monto: 89.99 },
-        { id: 5, fecha: '30/12/2025', caja: 'Caja 1', tipo: 'Venta', usuario: 'vendedor1', monto: 245.00 },
-    ];
-
-    const topProductos = [
-        { id: 1, nombre: 'Zapatillas Running Pro', cantidad: 45, monto: 4049.55 },
-        { id: 2, nombre: 'Botas de Montaña', cantidad: 32, monto: 4000.00 },
-        { id: 3, nombre: 'Tenis Casuales', cantidad: 28, monto: 2100.00 },
-        { id: 4, nombre: 'Sandalias Verano', cantidad: 25, monto: 1137.50 },
-        { id: 5, nombre: 'Zapatos Formales', cantidad: 18, monto: 2700.00 },
-    ];
-
-    const topProductosMonto = [
-        { id: 1, nombre: 'Zapatillas Running Pro', monto: 4049.55, porcentaje: 26 },
-        { id: 2, nombre: 'Botas de Montaña', monto: 4000.00, porcentaje: 26 },
-        { id: 3, nombre: 'Zapatos Formales', monto: 2700.00, porcentaje: 18 },
-        { id: 4, nombre: 'Tenis Casuales', monto: 2100.00, porcentaje: 14 },
-        { id: 5, nombre: 'Sandalias Verano', monto: 1137.50, porcentaje: 7 },
-    ];
+    // State for real data
+    const [stats, setStats] = useState({
+        ventas: 0,
+        productosVendidos: 0,
+        ganancias: 0,
+        cambioVentas: 0,
+        cambioProductos: 0,
+        cambioGanancias: 0
+    });
+    const [movimientosCaja, setMovimientosCaja] = useState([]);
+    const [topProductos, setTopProductos] = useState([]);
+    const [topProductosMonto, setTopProductosMonto] = useState([]);
+    const [ventasMensuales, setVentasMensuales] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     const filters = [
         { id: 'todo', label: 'Todo' },
@@ -53,8 +32,220 @@ export default function Dashboard() {
         { id: 'porDia', label: 'Por Día' },
     ];
 
+    // Fetch all dashboard data
+    useEffect(() => {
+        fetchDashboardData();
+    }, [activeFilter, currentPage]);
+
+    const getFilterParams = () => {
+        const now = new Date();
+        let fechaInicio = null;
+        let fechaFin = now.toISOString().split('T')[0];
+
+        switch (activeFilter) {
+            case 'hoy':
+                fechaInicio = fechaFin;
+                break;
+            case '7dias':
+                const week = new Date(now);
+                week.setDate(week.getDate() - 7);
+                fechaInicio = week.toISOString().split('T')[0];
+                break;
+            case '30dias':
+                const month = new Date(now);
+                month.setDate(month.getDate() - 30);
+                fechaInicio = month.toISOString().split('T')[0];
+                break;
+            case '12meses':
+                const year = new Date(now);
+                year.setFullYear(year.getFullYear() - 1);
+                fechaInicio = year.toISOString().split('T')[0];
+                break;
+            default:
+                // 'todo' - no filter
+                break;
+        }
+
+        return { fechaInicio, fechaFin };
+    };
+
+    const fetchDashboardData = async () => {
+        setIsLoading(true);
+        const token = localStorage.getItem('token');
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+        const { fechaInicio, fechaFin } = getFilterParams();
+
+        try {
+            // Build query params
+            let queryParams = '';
+            if (fechaInicio) {
+                queryParams = `?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`;
+            }
+
+            // Fetch ventas
+            let ventasData = [];
+            let totalVentas = 0;
+            let totalProductosVendidos = 0;
+            const productSales = {};
+
+            try {
+                const ventasRes = await fetch(`${API_URL}/ventas${queryParams}`, { headers });
+                if (ventasRes.ok) {
+                    const data = await ventasRes.json();
+                    ventasData = data.data || data || [];
+
+                    // If data is not an array, try to extract it
+                    if (!Array.isArray(ventasData)) {
+                        ventasData = [];
+                    }
+
+                    // Calculate totals from ventas
+                    ventasData.forEach(venta => {
+                        totalVentas += parseFloat(venta.total) || 0;
+
+                        // Get items from venta
+                        const items = venta.items || venta.detalles || venta.ventaItems || [];
+                        items.forEach(item => {
+                            const cantidad = parseInt(item.cantidad) || 1;
+                            totalProductosVendidos += cantidad;
+
+                            // Track product sales
+                            const prodId = item.productoId || item.producto_id || item.id;
+                            const prodNombre = item.nombre || item.producto?.nombre || `Producto ${prodId}`;
+                            const subtotal = parseFloat(item.subtotal) || (parseFloat(item.precioUnitario || item.precio) * cantidad) || 0;
+
+                            if (prodId) {
+                                if (!productSales[prodId]) {
+                                    productSales[prodId] = {
+                                        id: prodId,
+                                        nombre: prodNombre,
+                                        cantidad: 0,
+                                        monto: 0
+                                    };
+                                }
+                                productSales[prodId].cantidad += cantidad;
+                                productSales[prodId].monto += subtotal;
+                            }
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching ventas:', err);
+            }
+
+            // Fetch movimientos de caja  
+            let movimientosData = [];
+            try {
+                // Try the main endpoint
+                let movimientosRes = await fetch(`${API_URL}/movimientos-caja?limit=10&page=${currentPage}`, { headers });
+
+                console.log('Movimientos response status:', movimientosRes.status);
+
+                if (movimientosRes.ok) {
+                    const data = await movimientosRes.json();
+                    console.log('Movimientos raw data:', data);
+
+                    // Try different data structures
+                    if (Array.isArray(data)) {
+                        movimientosData = data;
+                    } else if (data.data && Array.isArray(data.data)) {
+                        movimientosData = data.data;
+                    } else if (data.movimientos && Array.isArray(data.movimientos)) {
+                        movimientosData = data.movimientos;
+                    } else if (data.rows && Array.isArray(data.rows)) {
+                        movimientosData = data.rows;
+                    } else {
+                        movimientosData = [];
+                    }
+
+                    setTotalPages(data.totalPages || data.meta?.totalPages || data.pagination?.totalPages || 1);
+                    console.log('Extracted movimientos:', movimientosData);
+                }
+            } catch (err) {
+                console.error('Error fetching movimientos:', err);
+            }
+
+            // Sort by cantidad for top 5
+            const sortedByCantidad = Object.values(productSales)
+                .sort((a, b) => b.cantidad - a.cantidad)
+                .slice(0, 5);
+
+            // Sort by monto for top 10
+            const sortedByMonto = Object.values(productSales)
+                .sort((a, b) => b.monto - a.monto)
+                .slice(0, 10);
+
+            // Calculate percentages for monto chart
+            const maxMonto = sortedByMonto.length > 0 ? sortedByMonto[0].monto : 1;
+            const topMontoWithPercentage = sortedByMonto.map(p => ({
+                ...p,
+                porcentaje: Math.round((p.monto / maxMonto) * 100)
+            }));
+
+            // Calculate monthly sales for chart
+            const monthlySales = Array(12).fill(0);
+            ventasData.forEach(venta => {
+                const fecha = new Date(venta.fecha || venta.createdAt || venta.created_at);
+                if (!isNaN(fecha.getTime())) {
+                    const month = fecha.getMonth();
+                    monthlySales[month] += parseFloat(venta.total) || 0;
+                }
+            });
+
+            // Normalize for chart display (0-100%)
+            const maxMonthly = Math.max(...monthlySales, 1);
+            const normalizedMonthly = monthlySales.map(val => Math.round((val / maxMonthly) * 100));
+
+            // Format movimientos for display
+            const formattedMovimientos = movimientosData.map(mov => {
+                const tipo = mov.tipo || mov.tipoMovimiento || 'Movimiento';
+                const isNegative = tipo.toUpperCase().includes('EGRESO') ||
+                    tipo.toUpperCase().includes('RETIRO') ||
+                    tipo.toUpperCase().includes('SALIDA');
+
+                return {
+                    id: mov.id,
+                    fecha: new Date(mov.fecha || mov.createdAt || mov.created_at).toLocaleDateString('es-ES'),
+                    caja: mov.caja?.nombre || mov.sesionCaja?.caja?.nombre || mov.cajaNombre || 'Caja',
+                    tipo: tipo,
+                    usuario: mov.usuario?.nombres || mov.usuario?.nombre || mov.usuario?.email || mov.usuarioNombre || 'Usuario',
+                    monto: isNegative ? -(parseFloat(mov.monto) || 0) : (parseFloat(mov.monto) || 0)
+                };
+            });
+
+            // Estimate ganancias (20% margin as example)
+            const estimatedGanancias = totalVentas * 0.20;
+
+            // Update state
+            setStats({
+                ventas: totalVentas,
+                productosVendidos: totalProductosVendidos,
+                ganancias: estimatedGanancias,
+                cambioVentas: 0,
+                cambioProductos: 0,
+                cambioGanancias: 0
+            });
+            setMovimientosCaja(formattedMovimientos);
+            setTopProductos(sortedByCantidad);
+            setTopProductosMonto(topMontoWithPercentage);
+            setVentasMensuales(normalizedMonthly);
+
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2 }).format(amount);
+    };
+
+    const handleClearFilter = () => {
+        setActiveFilter('todo');
     };
 
     return (
@@ -136,14 +327,17 @@ export default function Dashboard() {
                             key={filter.id}
                             onClick={() => setActiveFilter(filter.id)}
                             className={`filter-btn px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeFilter === filter.id
-                                    ? 'filter-active text-gray-900 dark:text-white dark:bg-gray-700'
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'filter-active text-gray-900 dark:text-white dark:bg-gray-700'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                         >
                             {filter.label}
                         </button>
                     ))}
-                    <button className="filter-btn px-4 py-2 rounded-lg text-sm font-medium text-primary hover:bg-primary/10 transition-all">
+                    <button
+                        onClick={handleClearFilter}
+                        className="filter-btn px-4 py-2 rounded-lg text-sm font-medium text-primary hover:bg-primary/10 transition-all"
+                    >
                         Limpiar filtro
                     </button>
                 </div>
@@ -251,8 +445,8 @@ export default function Dashboard() {
                                     style={{ animationDelay: `${0.5 + index * 0.1}s` }}
                                 >
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${index === 0 ? 'bg-yellow-500' :
-                                            index === 1 ? 'bg-gray-400' :
-                                                index === 2 ? 'bg-amber-600' : 'bg-gray-300 text-gray-600'
+                                        index === 1 ? 'bg-gray-400' :
+                                            index === 2 ? 'bg-amber-600' : 'bg-gray-300 text-gray-600'
                                         }`}>
                                         {index + 1}
                                     </div>
@@ -268,16 +462,16 @@ export default function Dashboard() {
                             <div className="float-animation">
                                 <span className="material-symbols-outlined text-5xl mb-2">inventory_2</span>
                             </div>
-                            <p className="text-sm">sin data...</p>
+                            <p className="text-sm">Sin datos de ventas</p>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* Total Ventas Chart Card */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
                 <div
-                    className="card-animate hover-lift lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm"
+                    className="card-animate hover-lift bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm"
                     style={{ animationDelay: '0.5s' }}
                 >
                     <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">Total ventas</h3>
@@ -290,8 +484,8 @@ export default function Dashboard() {
                     )}
                     <div className="flex items-center gap-2 mb-6">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${stats.cambioVentas >= 0
-                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                             }`}>
                             {stats.cambioVentas >= 0 ? '+' : ''}{stats.cambioVentas}% al periodo anterior
                         </span>
@@ -299,12 +493,12 @@ export default function Dashboard() {
 
                     {/* Simple Chart Visualization */}
                     <div className="h-32 flex items-end gap-2">
-                        {[65, 45, 78, 52, 88, 42, 95, 68, 82, 55, 72, 60].map((height, index) => (
+                        {(ventasMensuales.length > 0 ? ventasMensuales : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).map((height, index) => (
                             <div
                                 key={index}
                                 className="flex-1 bg-gradient-to-t from-primary/80 to-primary/40 rounded-t-lg transition-all duration-500 hover:from-primary hover:to-primary/60"
                                 style={{
-                                    height: `${height}%`,
+                                    height: `${Math.max(height, 5)}%`,
                                     animationDelay: `${0.7 + index * 0.05}s`
                                 }}
                             ></div>
@@ -323,32 +517,6 @@ export default function Dashboard() {
                         <span>Oct</span>
                         <span>Nov</span>
                         <span>Dic</span>
-                    </div>
-                </div>
-
-                {/* Quick Actions Card */}
-                <div
-                    className="card-animate hover-lift bg-gradient-to-br from-primary to-blue-600 rounded-2xl p-6 shadow-lg shadow-primary/20"
-                    style={{ animationDelay: '0.6s' }}
-                >
-                    <h3 className="text-white/80 text-sm font-medium mb-4">Acciones Rápidas</h3>
-                    <div className="space-y-3">
-                        <button className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium text-sm transition-all">
-                            <span className="material-symbols-outlined">add_shopping_cart</span>
-                            Nueva Venta
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium text-sm transition-all">
-                            <span className="material-symbols-outlined">inventory</span>
-                            Agregar Producto
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium text-sm transition-all">
-                            <span className="material-symbols-outlined">receipt_long</span>
-                            Ver Reportes
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium text-sm transition-all">
-                            <span className="material-symbols-outlined">point_of_sale</span>
-                            Abrir Caja
-                        </button>
                     </div>
                 </div>
             </div>
@@ -391,28 +559,47 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {movimientosCaja.map((mov, index) => (
-                                    <tr
-                                        key={mov.id}
-                                        className="table-row border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                                        style={{ animationDelay: `${0.8 + index * 0.05}s` }}
-                                    >
-                                        <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.fecha}</td>
-                                        <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.caja}</td>
-                                        <td className="py-3 px-2">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${mov.tipo === 'Ingreso' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                                    mov.tipo === 'Retiro' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                                                        'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                                                }`}>
-                                                {mov.tipo}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.usuario}</td>
-                                        <td className={`py-3 px-2 text-sm font-semibold text-right ${mov.monto >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                            {mov.monto >= 0 ? '+' : ''}Bs. {formatCurrency(Math.abs(mov.monto))}
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan="5" className="py-8 text-center">
+                                            <div className="skeleton h-4 w-full rounded mb-2"></div>
+                                            <div className="skeleton h-4 w-full rounded mb-2"></div>
+                                            <div className="skeleton h-4 w-full rounded"></div>
                                         </td>
                                     </tr>
-                                ))}
+                                ) : movimientosCaja.length > 0 ? (
+                                    movimientosCaja.map((mov, index) => (
+                                        <tr
+                                            key={mov.id || index}
+                                            className="table-row border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                                            style={{ animationDelay: `${0.8 + index * 0.05}s` }}
+                                        >
+                                            <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.fecha}</td>
+                                            <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.caja}</td>
+                                            <td className="py-3 px-2">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${mov.tipo.toUpperCase().includes('INGRESO') || mov.tipo.toUpperCase().includes('APERTURA')
+                                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                    mov.tipo.toUpperCase().includes('EGRESO') || mov.tipo.toUpperCase().includes('RETIRO') || mov.tipo.toUpperCase().includes('CIERRE')
+                                                        ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                                                        'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                                                    }`}>
+                                                    {mov.tipo}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.usuario}</td>
+                                            <td className={`py-3 px-2 text-sm font-semibold text-right ${mov.monto >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                {mov.monto >= 0 ? '+' : ''}Bs. {formatCurrency(Math.abs(mov.monto))}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="5" className="py-8 text-center text-gray-400">
+                                            <span className="material-symbols-outlined text-4xl mb-2 block">receipt_long</span>
+                                            No hay movimientos registrados
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -420,11 +607,19 @@ export default function Dashboard() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                         <div className="flex items-center gap-2">
-                            <button className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
+                            >
                                 <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                             </button>
-                            <span className="text-sm text-gray-500">1 de 1</span>
-                            <button className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <span className="text-sm text-gray-500">{currentPage} de {totalPages}</span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
+                            >
                                 <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                             </button>
                         </div>
@@ -461,8 +656,8 @@ export default function Dashboard() {
                                     <div className="flex items-center justify-between mb-1">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${index === 0 ? 'bg-yellow-500' :
-                                                    index === 1 ? 'bg-gray-400' :
-                                                        index === 2 ? 'bg-amber-600' : 'bg-gray-300 text-gray-600'
+                                                index === 1 ? 'bg-gray-400' :
+                                                    index === 2 ? 'bg-amber-600' : 'bg-gray-300 text-gray-600'
                                                 }`}>
                                                 {index + 1}
                                             </div>
@@ -488,7 +683,7 @@ export default function Dashboard() {
                             <div className="float-animation">
                                 <span className="material-symbols-outlined text-6xl mb-3">inventory_2</span>
                             </div>
-                            <p className="text-sm">sin data...</p>
+                            <p className="text-sm">Sin datos de ventas</p>
                         </div>
                     )}
                 </div>

@@ -11,6 +11,11 @@ export default function AperturaCajas() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Modal state
+    const [showModal, setShowModal] = useState(false);
+    const [modalMessage, setModalMessage] = useState('');
+    const [modalType, setModalType] = useState('error'); // 'error' | 'warning' | 'info'
+
     useEffect(() => {
         fetchCajas();
     }, []);
@@ -41,11 +46,20 @@ export default function AperturaCajas() {
     };
 
     const handleApertura = async (cajaId) => {
+        const monto = parseFloat(montoInicial) || 0;
+
+        // Validar que el monto sea mayor a 0
+        if (monto <= 0) {
+            setModalMessage('Debe ingresar un monto mayor a 0 para aperturar la caja. Si desea aperturar sin monto, use el botón "OMITIR".');
+            setModalType('warning');
+            setShowModal(true);
+            return;
+        }
+
         try {
             const token = localStorage.getItem('token');
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const usuarioId = user.id;
-            const monto = parseFloat(montoInicial) || 0;
 
             const response = await fetch(`${API_URL}/cajas/${cajaId}/abrir`, {
                 method: 'POST',
@@ -62,11 +76,15 @@ export default function AperturaCajas() {
                 navigate('/admin/punto-venta');
             } else {
                 const errorData = await response.json();
-                alert('Error: ' + (errorData.message || errorData.error || 'No se pudo abrir la caja'));
+                setModalMessage(errorData.message || errorData.error || 'No se pudo abrir la caja');
+                setModalType('error');
+                setShowModal(true);
             }
         } catch (err) {
             console.error('Error:', err);
-            alert('Error al aperturar la caja');
+            setModalMessage('Error al aperturar la caja');
+            setModalType('error');
+            setShowModal(true);
         }
     };
 
@@ -90,11 +108,15 @@ export default function AperturaCajas() {
                 navigate('/admin/punto-venta');
             } else {
                 const errorData = await response.json();
-                alert('Error: ' + (errorData.message || errorData.error || 'No se pudo abrir la caja'));
+                setModalMessage(errorData.message || errorData.error || 'No se pudo abrir la caja');
+                setModalType('error');
+                setShowModal(true);
             }
         } catch (err) {
             console.error('Error:', err);
-            alert('Error al aperturar la caja');
+            setModalMessage('Error al aperturar la caja');
+            setModalType('error');
+            setShowModal(true);
         }
     };
 
@@ -281,6 +303,43 @@ export default function AperturaCajas() {
                     </span>
                 </div>
             </div>
+
+            {/* Modal de mensajes */}
+            {showModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setShowModal(false)}
+                    />
+                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-[scaleIn_0.2s_ease-out]">
+                        <div className="flex flex-col items-center text-center">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${modalType === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
+                                    modalType === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                                        'bg-blue-100 dark:bg-blue-900/30'
+                                }`}>
+                                <span className={`material-symbols-outlined text-3xl ${modalType === 'error' ? 'text-red-500' :
+                                        modalType === 'warning' ? 'text-amber-500' :
+                                            'text-blue-500'
+                                    }`}>
+                                    {modalType === 'error' ? 'error' :
+                                        modalType === 'warning' ? 'warning' : 'info'}
+                                </span>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                                {modalType === 'error' ? 'Error' :
+                                    modalType === 'warning' ? 'Atención' : 'Información'}
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-400 mb-6">{modalMessage}</p>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold hover:from-primary/90 hover:to-blue-700 transition-all"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

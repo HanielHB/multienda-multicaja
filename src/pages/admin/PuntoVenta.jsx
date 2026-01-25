@@ -49,6 +49,7 @@ export default function PuntoVenta() {
         caja: 'Cargando...',
         usuario: 'usuario'
     });
+    const [saldoCaja, setSaldoCaja] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // Fetch products, clientes and caja info on mount
@@ -120,6 +121,8 @@ export default function PuntoVenta() {
                         caja: caja.nombre || 'N/A',
                         usuario: user.nombres || user.email || 'usuario'
                     });
+                    // Obtener saldo de caja
+                    setSaldoCaja(parseFloat(caja.saldo) || parseFloat(caja.saldoActual) || parseFloat(caja.efectivo) || 0);
                 } else {
                     // Fallback if caja fetch fails
                     setCajaInfo({
@@ -229,13 +232,50 @@ export default function PuntoVenta() {
 
     const clearCart = () => {
         setCart([]);
+        setMontoEfectivo('');
+        setSelectedCliente(null);
+        setVuelto(0);
+        setRestante(0);
+    };
+
+    const handleCerrarCaja = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const cajaId = localStorage.getItem('cajaActiva');
+            const usuarioId = user.id;
+
+            // Enviar saldoCaja como montoFinal, o permitir input del usuario
+            // Por defecto usaremos el saldo calculado por el sistema
+            const response = await fetch(`${API_URL}/cajas/${cajaId}/cerrar`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    montoFinal: saldoCaja, // O el monto contado por el usuario
+                    usuarioId: usuarioId
+                })
+            });
+
+            if (response.ok) {
+                // Limpiar storage y redirigir
+                localStorage.removeItem('cajaActiva');
+                navigate('/admin/apertura-cajas');
+            } else {
+                const errorData = await response.json();
+                alert('Error: ' + (errorData.message || 'No se pudo cerrar la caja'));
+            }
+        } catch (err) {
+            console.error('Error al cerrar caja:', err);
+            alert('Error al cerrar la caja');
+        }
     };
 
     const paymentMethods = [
-        { id: 'credito', label: 'Crédito', icon: 'credit_score', color: 'bg-purple-500' },
+        { id: 'qr', label: 'Qr', icon: 'credit_score', color: 'bg-purple-500' },
         { id: 'efectivo', label: 'Efectivo', icon: 'payments', color: 'bg-pink-500' },
-        { id: 'mixto', label: 'Mixto', icon: 'swap_horiz', color: 'bg-orange-500' },
-        { id: 'tarjeta', label: 'Tarjeta', icon: 'credit_card', color: 'bg-blue-500' }
     ];
 
     // Handle payment method selection
@@ -314,6 +354,8 @@ export default function PuntoVenta() {
 
                 setShowPaymentModal(false);
                 setShowVentaExitosaModal(true);
+                // Actualizar saldo de caja con el total de la venta
+                setSaldoCaja(prev => prev + total);
                 setCart([]);
                 setMontoEfectivo('');
                 setSelectedCliente(null);
@@ -758,8 +800,14 @@ export default function PuntoVenta() {
                                     <p className="text-center text-gray-400 text-sm mb-2">{selectedPaymentInfo?.label || 'Efectivo'}</p>
                                     <input
                                         type="number"
+                                        min="0"
                                         value={montoEfectivo}
-                                        onChange={(e) => setMontoEfectivo(e.target.value)}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            if (val >= 0 || e.target.value === '') {
+                                                setMontoEfectivo(e.target.value);
+                                            }
+                                        }}
                                         placeholder={total.toFixed(0)}
                                         className="amount-input w-full bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-300"
                                         autoFocus
@@ -786,15 +834,16 @@ export default function PuntoVenta() {
                                 </div>
 
                                 {/* Cobrar Button */}
+                                {/* Cobrar Button */}
                                 <button
                                     onClick={handleCobrar}
-                                    disabled={restante > 0}
-                                    className={`w-full py-4 rounded-full font-bold text-white flex items-center justify-center gap-2 transition-all shadow-lg btn-bounce ${restante > 0
-                                        ? 'bg-gray-300 cursor-not-allowed'
-                                        : 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 shadow-emerald-500/30'
+                                    disabled={loading || restante > 0 || cart.length === 0}
+                                    className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${restante <= 0 && cart.length > 0 && !loading
+                                        ? 'bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                         }`}
                                 >
-                                    COBRAR (enter)
+                                    {loading ? 'Procesando...' : `COBRAR (enter)`}
                                 </button>
                             </div>
 
@@ -814,385 +863,474 @@ export default function PuntoVenta() {
             </div>
 
             {/* Modal Ingresar Dinero */}
-            {showIngresoModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div
-                        className="modal-backdrop absolute inset-0 bg-slate-200/80 dark:bg-gray-950/80 backdrop-blur-sm"
-                        onClick={() => setShowIngresoModal(false)}
-                    />
-                    <div className="modal-content relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="p-4 flex items-center justify-start">
-                            <button
-                                onClick={() => setShowIngresoModal(false)}
-                                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                            >
-                                <span className="material-symbols-outlined">arrow_back</span>
-                                <span className="font-medium">Volver</span>
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="px-8 pb-8">
-                            <h2 className="text-2xl font-black text-gray-900 dark:text-white text-center mb-6">
-                                INGRESAR DINERO A CAJA
-                            </h2>
-
-                            {/* Payment Type Toggle */}
-                            <div className="flex justify-center gap-3 mb-4">
+            {
+                showIngresoModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="modal-backdrop absolute inset-0 bg-slate-200/80 dark:bg-gray-950/80 backdrop-blur-sm"
+                            onClick={() => setShowIngresoModal(false)}
+                        />
+                        <div className="modal-content relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                            {/* Header */}
+                            <div className="p-4 flex items-center justify-start">
                                 <button
-                                    onClick={() => setIngresoTipo('credito')}
-                                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${ingresoTipo === 'credito'
-                                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-                                        : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                        }`}
+                                    onClick={() => setShowIngresoModal(false)}
+                                    className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                                 >
-                                    Credito
-                                </button>
-                                <button
-                                    onClick={() => setIngresoTipo('efectivo')}
-                                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${ingresoTipo === 'efectivo'
-                                        ? 'bg-yellow-400 text-gray-900 shadow-md'
-                                        : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    Efectivo
-                                </button>
-                            </div>
-                            <div className="flex justify-center mb-6">
-                                <button
-                                    onClick={() => setIngresoTipo('tarjeta')}
-                                    className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all ${ingresoTipo === 'tarjeta'
-                                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-                                        : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    Tarjeta
+                                    <span className="material-symbols-outlined">arrow_back</span>
+                                    <span className="font-medium">Volver</span>
                                 </button>
                             </div>
 
-                            {/* Monto */}
-                            <div className="mb-4">
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Monto:</label>
-                                <input
-                                    type="number"
-                                    value={ingresoMonto}
-                                    onChange={(e) => setIngresoMonto(e.target.value)}
-                                    placeholder="0.00"
-                                    className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-lg"
-                                />
-                            </div>
+                            {/* Content */}
+                            <div className="px-8 pb-8">
+                                <h2 className="text-2xl font-black text-gray-900 dark:text-white text-center mb-6">
+                                    INGRESAR DINERO A CAJA
+                                </h2>
 
-                            {/* Motivo */}
-                            <div className="mb-6">
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Motivo (puede estar en blanco)</label>
-                                <textarea
-                                    value={ingresoMotivo}
-                                    onChange={(e) => setIngresoMotivo(e.target.value)}
-                                    placeholder="motivo"
-                                    rows="3"
-                                    className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary resize-none"
-                                />
-                            </div>
+                                {/* Payment Type - Solo Efectivo */}
+                                <div className="flex justify-center mb-6">
+                                    <button
+                                        className="px-6 py-2.5 rounded-xl font-bold text-sm transition-all bg-yellow-400 text-gray-900 shadow-md cursor-default"
+                                    >
+                                        Efectivo
+                                    </button>
+                                </div>
 
-                            {/* Submit Button */}
-                            <button
-                                onClick={() => {
-                                    console.log('Ingreso:', { tipo: ingresoTipo, monto: ingresoMonto, motivo: ingresoMotivo });
-                                    setShowIngresoModal(false);
-                                    setIngresoMonto('');
-                                    setIngresoMotivo('');
-                                }}
-                                className="w-full py-4 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm uppercase tracking-wide hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg shadow-emerald-500/30 btn-bounce"
-                            >
-                                REGISTRAR
-                            </button>
+                                {/* Monto */}
+                                <div className="mb-4">
+                                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Monto:</label>
+                                    <input
+                                        type="number"
+                                        value={ingresoMonto}
+                                        onChange={(e) => setIngresoMonto(e.target.value)}
+                                        placeholder="0.00"
+                                        className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-lg"
+                                    />
+                                </div>
+
+                                {/* Motivo */}
+                                <div className="mb-6">
+                                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Motivo (puede estar en blanco)</label>
+                                    <textarea
+                                        value={ingresoMotivo}
+                                        onChange={(e) => setIngresoMotivo(e.target.value)}
+                                        placeholder="motivo"
+                                        rows="3"
+                                        className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary resize-none"
+                                    />
+                                </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    onClick={async () => {
+                                        const monto = parseFloat(ingresoMonto) || 0;
+                                        if (monto > 0) {
+                                            try {
+                                                const token = localStorage.getItem('token');
+                                                const cajaId = localStorage.getItem('cajaActiva');
+
+                                                const response = await fetch(`${API_URL}/cajas/${cajaId}/ingreso`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Authorization': `Bearer ${token}`,
+                                                        'Content-Type': 'application/json'
+                                                    },
+                                                    body: JSON.stringify({
+                                                        monto: monto,
+                                                        tipo: 'efectivo',
+                                                        motivo: ingresoMotivo,
+                                                        usuarioId: JSON.parse(localStorage.getItem('user') || '{}').id
+                                                    })
+                                                });
+
+                                                if (response.ok) {
+                                                    const data = await response.json();
+                                                    // Actualizar saldo con el valor del backend
+                                                    setSaldoCaja(parseFloat(data.saldoActual) || (saldoCaja + monto));
+                                                } else {
+                                                    // Fallback: actualizar localmente
+                                                    setSaldoCaja(prev => prev + monto);
+                                                    console.error('Error al registrar ingreso en backend');
+                                                }
+                                            } catch (err) {
+                                                // Fallback: actualizar localmente
+                                                setSaldoCaja(prev => prev + monto);
+                                                console.error('Error al registrar ingreso:', err);
+                                            }
+                                        }
+                                        setShowIngresoModal(false);
+                                        setIngresoMonto('');
+                                        setIngresoMotivo('');
+                                    }}
+                                    className="w-full py-4 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm uppercase tracking-wide hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg shadow-emerald-500/30 btn-bounce"
+                                >
+                                    REGISTRAR
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal Retirar Dinero */}
-            {showRetiroModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div
-                        className="modal-backdrop absolute inset-0 bg-slate-200/80 dark:bg-gray-950/80 backdrop-blur-sm"
-                        onClick={() => setShowRetiroModal(false)}
-                    />
-                    <div className="modal-content relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="p-4 flex items-center justify-start">
-                            <button
-                                onClick={() => setShowRetiroModal(false)}
-                                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                            >
-                                <span className="material-symbols-outlined">arrow_back</span>
-                                <span className="font-medium">Volver</span>
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="px-8 pb-8">
-                            <h2 className="text-2xl font-black text-gray-900 dark:text-white text-center mb-6">
-                                RETIRAR DINERO DE CAJA
-                            </h2>
-
-                            {/* Payment Type Toggle */}
-                            <div className="flex justify-center gap-3 mb-4">
+            {
+                showRetiroModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="modal-backdrop absolute inset-0 bg-slate-200/80 dark:bg-gray-950/80 backdrop-blur-sm"
+                            onClick={() => setShowRetiroModal(false)}
+                        />
+                        <div className="modal-content relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                            {/* Header */}
+                            <div className="p-4 flex items-center justify-start">
                                 <button
-                                    onClick={() => setRetiroTipo('credito')}
-                                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${retiroTipo === 'credito'
-                                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-                                        : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                        }`}
+                                    onClick={() => setShowRetiroModal(false)}
+                                    className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                                 >
-                                    Credito
-                                </button>
-                                <button
-                                    onClick={() => setRetiroTipo('efectivo')}
-                                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${retiroTipo === 'efectivo'
-                                        ? 'bg-yellow-400 text-gray-900 shadow-md'
-                                        : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    Efectivo
-                                </button>
-                            </div>
-                            <div className="flex justify-center mb-6">
-                                <button
-                                    onClick={() => setRetiroTipo('tarjeta')}
-                                    className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all ${retiroTipo === 'tarjeta'
-                                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-                                        : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    Tarjeta
+                                    <span className="material-symbols-outlined">arrow_back</span>
+                                    <span className="font-medium">Volver</span>
                                 </button>
                             </div>
 
-                            {/* Monto */}
-                            <div className="mb-4">
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Monto:</label>
-                                <input
-                                    type="number"
-                                    value={retiroMonto}
-                                    onChange={(e) => setRetiroMonto(e.target.value)}
-                                    placeholder="0.00"
-                                    className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-lg"
-                                />
-                            </div>
+                            {/* Content */}
+                            <div className="px-8 pb-8">
+                                <h2 className="text-2xl font-black text-gray-900 dark:text-white text-center mb-6">
+                                    RETIRAR DINERO DE CAJA
+                                </h2>
 
-                            {/* Motivo */}
-                            <div className="mb-6">
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Motivo (puede estar en blanco)</label>
-                                <textarea
-                                    value={retiroMotivo}
-                                    onChange={(e) => setRetiroMotivo(e.target.value)}
-                                    placeholder="motivo"
-                                    rows="3"
-                                    className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary resize-none"
-                                />
-                            </div>
+                                {/* Payment Type - Solo Efectivo */}
+                                <div className="flex justify-center mb-6">
+                                    <button
+                                        className="px-6 py-2.5 rounded-xl font-bold text-sm transition-all bg-yellow-400 text-gray-900 shadow-md cursor-default"
+                                    >
+                                        Efectivo
+                                    </button>
+                                </div>
 
-                            {/* Submit Button */}
-                            <button
-                                onClick={() => {
-                                    console.log('Retiro:', { tipo: retiroTipo, monto: retiroMonto, motivo: retiroMotivo });
-                                    setShowRetiroModal(false);
-                                    setRetiroMonto('');
-                                    setRetiroMotivo('');
-                                }}
-                                className="w-full py-4 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm uppercase tracking-wide hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg shadow-emerald-500/30 btn-bounce"
-                            >
-                                REGISTRAR
-                            </button>
+                                {/* Monto */}
+                                <div className="mb-4">
+                                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Monto:</label>
+                                    <input
+                                        type="number"
+                                        value={retiroMonto}
+                                        onChange={(e) => setRetiroMonto(e.target.value)}
+                                        placeholder="0.00"
+                                        className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-lg"
+                                    />
+                                </div>
+
+                                {/* Motivo */}
+                                <div className="mb-6">
+                                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Motivo (puede estar en blanco)</label>
+                                    <textarea
+                                        value={retiroMotivo}
+                                        onChange={(e) => setRetiroMotivo(e.target.value)}
+                                        placeholder="motivo"
+                                        rows="3"
+                                        className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary resize-none"
+                                    />
+                                </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    onClick={async () => {
+                                        const monto = parseFloat(retiroMonto) || 0;
+                                        if (monto > 0) {
+                                            try {
+                                                const token = localStorage.getItem('token');
+                                                const cajaId = localStorage.getItem('cajaActiva');
+
+                                                const response = await fetch(`${API_URL}/cajas/${cajaId}/retiro`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Authorization': `Bearer ${token}`,
+                                                        'Content-Type': 'application/json'
+                                                    },
+                                                    body: JSON.stringify({
+                                                        monto: monto,
+                                                        tipo: 'efectivo',
+                                                        motivo: retiroMotivo,
+                                                        usuarioId: JSON.parse(localStorage.getItem('user') || '{}').id
+                                                    })
+                                                });
+
+                                                if (response.ok) {
+                                                    const data = await response.json();
+                                                    // Actualizar saldo con el valor del backend
+                                                    setSaldoCaja(parseFloat(data.saldoActual) || Math.max(0, saldoCaja - monto));
+                                                } else {
+                                                    // Fallback: actualizar localmente
+                                                    setSaldoCaja(prev => Math.max(0, prev - monto));
+                                                    console.error('Error al registrar retiro en backend');
+                                                }
+                                            } catch (err) {
+                                                // Fallback: actualizar localmente
+                                                setSaldoCaja(prev => Math.max(0, prev - monto));
+                                                console.error('Error al registrar retiro:', err);
+                                            }
+                                        }
+                                        setShowRetiroModal(false);
+                                        setRetiroMonto('');
+                                        setRetiroMotivo('');
+                                    }}
+                                    className="w-full py-4 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm uppercase tracking-wide hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg shadow-emerald-500/30 btn-bounce"
+                                >
+                                    REGISTRAR
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal Cerrar Caja */}
-            {showCerrarCajaModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div
-                        className="modal-backdrop absolute inset-0 bg-slate-200/90 dark:bg-gray-950/90 backdrop-blur-sm"
-                        onClick={() => setShowCerrarCajaModal(false)}
-                    />
-                    <div className="modal-content relative w-full max-w-3xl bg-slate-100 dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="p-6 flex items-center justify-center">
-                            <button
-                                onClick={() => setShowCerrarCajaModal(false)}
-                                className="absolute left-6 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                            >
-                                <span className="material-symbols-outlined">arrow_back</span>
-                                <span className="font-medium">Volver</span>
-                            </button>
-                        </div>
-
-                        {/* Date Range */}
-                        <div className="text-center pb-4">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Corte de caja desde: <span className="font-medium text-gray-700 dark:text-gray-300">31/12/2025 14:44:09</span> Hasta: <span className="font-medium text-gray-700 dark:text-gray-300">2025-12-31 15:03:52</span>
-                            </p>
-                        </div>
-
-                        {/* Summary Header */}
-                        <div className="flex justify-between items-center px-8 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <div>
-                                <span className="text-sm text-gray-500 dark:text-gray-400">Ventas Totales: </span>
-                                <span className="font-bold text-gray-900 dark:text-white">Bs. 30.00</span>
+            {
+                showCerrarCajaModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="modal-backdrop absolute inset-0 bg-slate-200/90 dark:bg-gray-950/90 backdrop-blur-sm"
+                            onClick={() => setShowCerrarCajaModal(false)}
+                        />
+                        <div className="modal-content relative w-full max-w-3xl bg-slate-100 dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                            {/* Header */}
+                            <div className="p-6 flex items-center justify-center">
+                                <button
+                                    onClick={() => setShowCerrarCajaModal(false)}
+                                    className="absolute left-6 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                >
+                                    <span className="material-symbols-outlined">arrow_back</span>
+                                    <span className="font-medium">Volver</span>
+                                </button>
                             </div>
-                            <div>
-                                <span className="text-sm text-gray-500 dark:text-gray-400">Efectivo en CAJA: </span>
-                                <span className="font-bold text-gray-900 dark:text-white">Bs. 130.00</span>
-                            </div>
-                        </div>
 
-                        {/* Main Content Card */}
-                        <div className="p-8 flex justify-center">
-                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-6 max-w-md w-full">
-                                <div className="flex gap-8">
-                                    {/* Left Column - Dinero en CAJA */}
-                                    <div className="flex-1 border-r border-gray-200 dark:border-gray-700 pr-6">
-                                        <h3 className="font-bold text-gray-900 dark:text-white mb-4">Dinero en CAJA</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Fondo de caja:</span>
-                                                <span className="text-gray-900 dark:text-white">Bs. 100.00</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Ventas en efectivo:</span>
-                                                <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Ingresos varios:</span>
-                                                <span className="text-gray-900 dark:text-white">Bs. 0.00</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Gastos varios:</span>
-                                                <span className="text-red-500 font-medium">-Bs. 0.00</span>
-                                            </div>
-                                            <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-3">
-                                                <div className="flex justify-between font-bold">
-                                                    <span></span>
-                                                    <span className="text-gray-900 dark:text-white">Bs. 130.00</span>
+                            {/* Date Range */}
+                            <div className="text-center pb-4">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Corte de caja desde: <span className="font-medium text-gray-700 dark:text-gray-300">31/12/2025 14:44:09</span> Hasta: <span className="font-medium text-gray-700 dark:text-gray-300">2025-12-31 15:03:52</span>
+                                </p>
+                            </div>
+
+                            {/* Summary Header */}
+                            <div className="flex justify-between items-center px-8 py-4 border-b border-gray-200 dark:border-gray-700">
+                                <div>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Ventas Totales: </span>
+                                    <span className="font-bold text-gray-900 dark:text-white">Bs. 30.00</span>
+                                </div>
+                                <div>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Efectivo en CAJA: </span>
+                                    <span className="font-bold text-gray-900 dark:text-white">Bs. 130.00</span>
+                                </div>
+                            </div>
+
+                            {/* Main Content Card */}
+                            <div className="p-8 flex justify-center">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-6 max-w-md w-full">
+                                    <div className="flex gap-8">
+                                        {/* Left Column - Dinero en CAJA */}
+                                        <div className="flex-1 border-r border-gray-200 dark:border-gray-700 pr-6">
+                                            <h3 className="font-bold text-gray-900 dark:text-white mb-4">Dinero en CAJA</h3>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">Fondo de caja:</span>
+                                                    <span className="text-gray-900 dark:text-white">Bs. 100.00</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">Ventas en efectivo:</span>
+                                                    <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">Ingresos varios:</span>
+                                                    <span className="text-gray-900 dark:text-white">Bs. 0.00</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">Gastos varios:</span>
+                                                    <span className="text-red-500 font-medium">-Bs. 0.00</span>
+                                                </div>
+                                                <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-3">
+                                                    <div className="flex justify-between font-bold">
+                                                        <span></span>
+                                                        <span className="text-gray-900 dark:text-white">Bs. 130.00</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Right Column - Ventas Totales */}
-                                    <div className="flex-1 pl-2">
-                                        <h3 className="font-bold text-gray-900 dark:text-white mb-4">Ventas Totales</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">En Efectivo:</span>
-                                                <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
-                                            </div>
-                                            <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-3">
-                                                <div className="flex justify-between font-bold">
-                                                    <span></span>
+                                        {/* Right Column - Ventas Totales */}
+                                        <div className="flex-1 pl-2">
+                                            <h3 className="font-bold text-gray-900 dark:text-white mb-4">Ventas Totales</h3>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">En Efectivo:</span>
                                                     <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
+                                                </div>
+                                                <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-3">
+                                                    <div className="flex justify-between font-bold">
+                                                        <span></span>
+                                                        <span className="text-gray-900 dark:text-white">Bs. 30.00</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Submit Button */}
-                        <div className="flex justify-center pb-8">
-                            <button
-                                onClick={() => {
-                                    setShowCerrarCajaModal(false);
-                                    setShowCerrarTurnoModal(true);
-                                    setEfectivoEnCaja('');
-                                }}
-                                className="px-10 py-4 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold text-sm uppercase tracking-wide hover:from-orange-500 hover:to-orange-600 transition-all shadow-lg shadow-orange-500/30 btn-bounce"
-                            >
-                                CERRAR CAJA
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                            {/* Monto Físico en Caja */}
+                            <div className="px-8 pb-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-6 max-w-md mx-auto">
+                                    <h3 className="font-bold text-gray-900 dark:text-white mb-4 text-center">Verificar Cuadre de Caja</h3>
 
-            {/* Modal Cerrar Turno (Step 2) */}
-            {showCerrarTurnoModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div
-                        className="modal-backdrop absolute inset-0 bg-slate-200/90 dark:bg-gray-950/90 backdrop-blur-sm"
-                        onClick={() => setShowCerrarTurnoModal(false)}
-                    />
-                    <div className="modal-content relative w-full max-w-md bg-slate-100 dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="p-6 flex items-center justify-center">
-                            <button
-                                onClick={() => {
-                                    setShowCerrarTurnoModal(false);
-                                    setShowCerrarCajaModal(true);
-                                }}
-                                className="absolute left-6 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                            >
-                                <span className="material-symbols-outlined">arrow_back</span>
-                                <span className="font-medium">Volver</span>
-                            </button>
-                        </div>
+                                    <div className="mb-4">
+                                        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Monto físico en caja:</label>
+                                        <input
+                                            type="number"
+                                            value={efectivoEnCaja}
+                                            onChange={(e) => setEfectivoEnCaja(e.target.value)}
+                                            placeholder="0.00"
+                                            className="input-animated w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-lg text-center font-bold"
+                                        />
+                                    </div>
 
-                        {/* Content */}
-                        <div className="px-8 pb-8 text-center">
-                            {/* Expected Cash */}
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                                Efectivo esperado en caja:
-                            </h2>
-                            <p className="text-3xl font-black text-gray-900 dark:text-white mb-8">
-                                Bs. 130.00
-                            </p>
-
-                            {/* Input Section */}
-                            <div className="mb-4">
-                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                    ¿Cuánto de <span className="font-bold text-gray-700 dark:text-gray-300">EFECTIVO</span> hay en caja física?
-                                </label>
-                                <input
-                                    type="number"
-                                    value={efectivoEnCaja}
-                                    onChange={(e) => setEfectivoEnCaja(e.target.value)}
-                                    placeholder="0.00"
-                                    className="input-animated w-full px-6 py-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-xl text-center"
-                                    autoFocus
-                                />
+                                    {efectivoEnCaja && (
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Saldo según sistema:</span>
+                                                <span className="font-bold text-gray-900 dark:text-white">Bs. {saldoCaja.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Monto físico:</span>
+                                                <span className="font-bold text-gray-900 dark:text-white">Bs. {parseFloat(efectivoEnCaja || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-bold text-gray-700 dark:text-gray-300">Diferencia:</span>
+                                                    {(() => {
+                                                        const diferencia = parseFloat(efectivoEnCaja || 0) - saldoCaja;
+                                                        if (diferencia === 0) {
+                                                            return (
+                                                                <span className="font-bold text-emerald-600 flex items-center gap-2">
+                                                                    <span className="material-symbols-outlined">check_circle</span>
+                                                                    ¡CUADRA! Bs. 0.00
+                                                                </span>
+                                                            );
+                                                        } else if (diferencia > 0) {
+                                                            return (
+                                                                <span className="font-bold text-blue-600 flex items-center gap-2">
+                                                                    <span className="material-symbols-outlined">arrow_upward</span>
+                                                                    Sobrante: Bs. {diferencia.toFixed(2)}
+                                                                </span>
+                                                            );
+                                                        } else {
+                                                            return (
+                                                                <span className="font-bold text-red-600 flex items-center gap-2">
+                                                                    <span className="material-symbols-outlined">arrow_downward</span>
+                                                                    Faltante: Bs. {Math.abs(diferencia).toFixed(2)}
+                                                                </span>
+                                                            );
+                                                        }
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Difference */}
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                                diferencia: <span className={`font-bold ${(parseFloat(efectivoEnCaja) || 0) - 130 < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                    {(parseFloat(efectivoEnCaja) || 0) - 130 < 0 ? '-' : ''}Bs. {Math.abs((parseFloat(efectivoEnCaja) || 0) - 130).toFixed(2)}
-                                </span>
-                            </p>
-
                             {/* Submit Button */}
-                            <button
-                                onClick={() => {
-                                    console.log('Cerrando turno con efectivo:', efectivoEnCaja);
-                                    setShowCerrarTurnoModal(false);
-                                    navigate('/admin/apertura-cajas');
-                                }}
-                                className="w-full py-4 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm uppercase tracking-wide hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg shadow-emerald-500/30 btn-bounce mb-4"
-                            >
-                                CERRAR TURNO
-                            </button>
-
-                            {/* Warning Text */}
-                            <p className="text-sm text-orange-500">
-                                La diferencia será registrada en su turno y se enviará a gerencia
-                            </p>
+                            <div className="flex justify-center pb-8">
+                                <button
+                                    onClick={() => {
+                                        setShowCerrarCajaModal(false);
+                                        setShowCerrarTurnoModal(true);
+                                        setEfectivoEnCaja('');
+                                    }}
+                                    className="px-10 py-4 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold text-sm uppercase tracking-wide hover:from-orange-500 hover:to-orange-600 transition-all shadow-lg shadow-orange-500/30 btn-bounce"
+                                >
+                                    CERRAR CAJA
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Modal Cerrar Turno (Step 2) */}
+            {
+                showCerrarTurnoModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="modal-backdrop absolute inset-0 bg-slate-200/90 dark:bg-gray-950/90 backdrop-blur-sm"
+                            onClick={() => setShowCerrarTurnoModal(false)}
+                        />
+                        <div className="modal-content relative w-full max-w-md bg-slate-100 dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                            {/* Header */}
+                            <div className="p-6 flex items-center justify-center">
+                                <button
+                                    onClick={() => {
+                                        setShowCerrarTurnoModal(false);
+                                        setShowCerrarCajaModal(true);
+                                    }}
+                                    className="absolute left-6 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                >
+                                    <span className="material-symbols-outlined">arrow_back</span>
+                                    <span className="font-medium">Volver</span>
+                                </button>
+                            </div>
+
+                            {/* Content */}
+                            <div className="px-8 pb-8 text-center">
+                                {/* Expected Cash */}
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                    Efectivo esperado en caja:
+                                </h2>
+                                <p className="text-3xl font-black text-gray-900 dark:text-white mb-8">
+                                    Bs. 130.00
+                                </p>
+
+                                {/* Input Section */}
+                                <div className="mb-4">
+                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                        ¿Cuánto de <span className="font-bold text-gray-700 dark:text-gray-300">EFECTIVO</span> hay en caja física?
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={efectivoEnCaja}
+                                        onChange={(e) => setEfectivoEnCaja(e.target.value)}
+                                        placeholder="0.00"
+                                        className="input-animated w-full px-6 py-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-xl text-center"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* Difference */}
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                                    diferencia: <span className={`font-bold ${(parseFloat(efectivoEnCaja) || 0) - 130 < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                        {(parseFloat(efectivoEnCaja) || 0) - 130 < 0 ? '-' : ''}Bs. {Math.abs((parseFloat(efectivoEnCaja) || 0) - 130).toFixed(2)}
+                                    </span>
+                                </p>
+
+                                {/* Submit Button */}
+                                <button
+                                    onClick={() => {
+                                        console.log('Cerrando turno con efectivo:', efectivoEnCaja);
+                                        setShowCerrarTurnoModal(false);
+                                        navigate('/admin/apertura-cajas');
+                                    }}
+                                    className="w-full py-4 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-sm uppercase tracking-wide hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg shadow-emerald-500/30 btn-bounce mb-4"
+                                >
+                                    CERRAR TURNO
+                                </button>
+
+                                {/* Warning Text */}
+                                <p className="text-sm text-orange-500">
+                                    La diferencia será registrada en su turno y se enviará a gerencia
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Bottom Action Bar */}
             <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 py-2.5 flex items-center gap-2 page-animate">
@@ -1224,188 +1362,306 @@ export default function PuntoVenta() {
                     <span className="material-symbols-outlined text-[16px]">remove_circle</span>
                     Retirar dinero
                 </button>
-            </footer>
 
-            {/* Modal Stock Insuficiente */}
-            {showStockModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div
-                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        onClick={() => setShowStockModal(false)}
-                    />
-                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full scale-in">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-                                <span className="material-symbols-outlined text-4xl text-red-500">inventory_2</span>
+                {/* Spacer para empujar el saldo a la derecha */}
+                <div className="flex-1"></div>
+
+                {/* Cash in Register Display */}
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800">
+                    <span className="material-symbols-outlined text-blue-500 text-[16px]">account_balance_wallet</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">En caja:</span>
+                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">Bs. {saldoCaja.toFixed(2)}</span>
+
+
+                </div>
+            </footer >
+
+            {/* Modal Cerrar Caja */}
+            {
+                showCerrarCajaModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                            onClick={() => setShowCerrarCajaModal(false)}
+                        />
+                        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-md w-full scale-in">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+                                    <span className="material-symbols-outlined text-3xl text-blue-500">point_of_sale</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                    Cerrar Caja
+                                </h3>
+
+                                {/* Saldo del sistema */}
+                                <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-4">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Saldo según sistema:</p>
+                                    <p className="text-2xl font-black text-gray-900 dark:text-white">Bs. {saldoCaja.toFixed(2)}</p>
+                                </div>
+
+                                {/* Input para monto físico */}
+                                <div className="w-full mb-4">
+                                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2 text-left">
+                                        Monto físico en caja:
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={efectivoEnCaja}
+                                        onChange={(e) => setEfectivoEnCaja(e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-xl text-center font-bold"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* Mostrar diferencia solo si hay monto ingresado */}
+                                {efectivoEnCaja && (
+                                    <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-4">
+                                        {(() => {
+                                            const diferencia = parseFloat(efectivoEnCaja || 0) - saldoCaja;
+                                            if (diferencia === 0) {
+                                                return (
+                                                    <div className="flex items-center justify-center gap-2 text-emerald-600">
+                                                        <span className="material-symbols-outlined">check_circle</span>
+                                                        <span className="font-bold text-lg">¡CUADRA PERFECTO!</span>
+                                                    </div>
+                                                );
+                                            } else if (diferencia > 0) {
+                                                return (
+                                                    <div className="text-center">
+                                                        <p className="text-sm text-gray-500 mb-1">Diferencia:</p>
+                                                        <div className="flex items-center justify-center gap-2 text-blue-600">
+                                                            <span className="material-symbols-outlined">arrow_upward</span>
+                                                            <span className="font-bold text-lg">Sobrante: Bs. {diferencia.toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            } else {
+                                                return (
+                                                    <div className="text-center">
+                                                        <p className="text-sm text-gray-500 mb-1">Diferencia:</p>
+                                                        <div className="flex items-center justify-center gap-2 text-red-600">
+                                                            <span className="material-symbols-outlined">arrow_downward</span>
+                                                            <span className="font-bold text-lg">Faltante: Bs. {Math.abs(diferencia).toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 w-full">
+                                    <button
+                                        onClick={() => {
+                                            setShowCerrarCajaModal(false);
+                                            setEfectivoEnCaja('');
+                                        }}
+                                        className="flex-1 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            handleCerrarCaja();
+                                            setEfectivoEnCaja('');
+                                        }}
+                                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold hover:shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+                                    >
+                                        Cerrar Caja
+                                    </button>
+                                </div>
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Stock Insuficiente</h3>
-                            <p className="text-gray-600 dark:text-gray-400 mb-6">{stockAlertMessage}</p>
-                            <button
-                                onClick={() => setShowStockModal(false)}
-                                className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold hover:from-primary/90 hover:to-blue-700 transition-all"
-                            >
-                                Entendido
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Modal Stock Insuficiente */}
+            {
+                showStockModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                            onClick={() => setShowStockModal(false)}
+                        />
+                        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full scale-in">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+                                    <span className="material-symbols-outlined text-4xl text-red-500">inventory_2</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Stock Insuficiente</h3>
+                                <p className="text-gray-600 dark:text-gray-400 mb-6">{stockAlertMessage}</p>
+                                <button
+                                    onClick={() => setShowStockModal(false)}
+                                    className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold hover:from-primary/90 hover:to-blue-700 transition-all"
+                                >
+                                    Entendido
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Modal Venta Exitosa */}
-            {showVentaExitosaModal && ventaCompletada && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div
-                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        onClick={() => setShowVentaExitosaModal(false)}
-                    />
-                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-sm w-full scale-in">
-                        <div className="flex flex-col items-center text-center">
-                            {/* Success Icon */}
-                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
-                                <span className="material-symbols-outlined text-5xl text-white">check</span>
+            {
+                showVentaExitosaModal && ventaCompletada && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                            onClick={() => setShowVentaExitosaModal(false)}
+                        />
+                        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-sm w-full scale-in">
+                            <div className="flex flex-col items-center text-center">
+                                {/* Success Icon */}
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
+                                    <span className="material-symbols-outlined text-5xl text-white">check</span>
+                                </div>
+
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Venta Exitosa!</h3>
+                                <p className="text-gray-500 dark:text-gray-400 mb-2">
+                                    {ventaCompletada.tipoDocumento.charAt(0).toUpperCase() + ventaCompletada.tipoDocumento.slice(1)}: <span className="font-bold text-primary">{ventaCompletada.numeroDocumento}</span>
+                                </p>
+                                <p className="text-3xl font-bold text-emerald-500 mb-6">Bs. {ventaCompletada.total.toFixed(2)}</p>
+
+                                {/* Buttons */}
+                                <div className="w-full space-y-3">
+                                    <button
+                                        onClick={() => {
+                                            setShowVentaExitosaModal(false);
+                                            setShowTicketModal(true);
+                                        }}
+                                        className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
+                                    >
+                                        <span className="material-symbols-outlined">receipt_long</span>
+                                        Ver e Imprimir Ticket
+                                    </button>
+                                    <button
+                                        onClick={() => setShowVentaExitosaModal(false)}
+                                        className="w-full py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                                    >
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal Ticket de Venta */}
+            {
+                showTicketModal && ventaCompletada && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                            onClick={() => setShowTicketModal(false)}
+                        />
+                        <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto scale-in">
+                            {/* Ticket Content for Printing */}
+                            <div id="ticket-print" className="p-6 bg-white">
+                                {/* Header */}
+                                <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                    <div className="border-2 border-gray-800 px-4 py-2 inline-block mb-2">
+                                        <span className="text-xs">TU LOGO</span>
+                                        <p className="font-bold text-lg">AQUÍ</p>
+                                    </div>
+                                    <p className="font-bold text-lg">{ventaCompletada.sucursal}</p>
+                                    <p className="text-sm text-gray-500">-</p>
+                                </div>
+
+                                {/* Document Info */}
+                                <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                    <p className="font-bold capitalize">{ventaCompletada.tipoDocumento}</p>
+                                    <p className="text-primary font-bold">{ventaCompletada.numeroDocumento}</p>
+                                    <div className="flex justify-between text-xs mt-2">
+                                        <span><strong>FECHA:</strong> {ventaCompletada.fecha.toLocaleDateString('es-ES')}</span>
+                                        <span><strong>HORA:</strong> {ventaCompletada.fecha.toLocaleTimeString('es-ES')}</span>
+                                    </div>
+                                    <p className="text-xs mt-1"><strong>CAJERO:</strong> {ventaCompletada.vendedor}</p>
+                                </div>
+
+                                {/* Client Info */}
+                                <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                    <p className="font-bold text-sm">CLIENTE:</p>
+                                    <p className="text-sm">NOMBRES: {ventaCompletada.cliente}</p>
+                                    <p className="text-sm">DOC.ID: -</p>
+                                    <p className="text-sm">DIRECC.: -</p>
+                                </div>
+
+                                {/* Products Table */}
+                                <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                    <div className="text-xs font-bold border-b border-gray-300 pb-1 mb-2">
+                                        <div className="flex justify-between">
+                                            <span className="w-1/2">CÓDIGO - DESCRIPCIÓN</span>
+                                            <span className="w-1/6 text-center">CANT.</span>
+                                            <span className="w-1/6 text-right">PRECIO</span>
+                                            <span className="w-1/6 text-right">TOTAL</span>
+                                        </div>
+                                    </div>
+                                    {ventaCompletada.items.map((item, index) => (
+                                        <div key={index} className="text-xs mb-1">
+                                            <p className="truncate">{item.nombre}</p>
+                                            <div className="flex justify-between">
+                                                <span className="w-1/2"></span>
+                                                <span className="w-1/6 text-center">{item.cantidad}</span>
+                                                <span className="w-1/6 text-right">{item.precioUnit.toFixed(2)}</span>
+                                                <span className="w-1/6 text-right">{item.subtotal.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Totals */}
+                                <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="font-bold">SUBTOTAL: Bs.</span>
+                                        <span>{ventaCompletada.subtotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="font-bold">DESCUENTO: Bs.</span>
+                                        <span>{ventaCompletada.descuento.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-lg font-bold mt-2">
+                                        <span>TOTAL: Bs.</span>
+                                        <span>{ventaCompletada.total.toFixed(2)}</span>
+                                    </div>
+                                </div>
+
+                                {/* Payment Info */}
+                                <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4 text-center">
+                                    <p className="font-bold text-sm">FORMA DE PAGO:</p>
+                                    <div className="flex justify-between text-sm mt-1">
+                                        <span className="capitalize">{ventaCompletada.metodoPago}: Bs.</span>
+                                        <span>{ventaCompletada.montoRecibido.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span>Vuelto: Bs.</span>
+                                        <span>{ventaCompletada.vuelto.toFixed(2)}</span>
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="text-center text-xs text-gray-500">
+                                    <p>¡Gracias por su compra!</p>
+                                    <p className="mt-2">{ventaCompletada.sucursal} - {ventaCompletada.caja}</p>
+                                </div>
                             </div>
 
-                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Venta Exitosa!</h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-2">
-                                {ventaCompletada.tipoDocumento.charAt(0).toUpperCase() + ventaCompletada.tipoDocumento.slice(1)}: <span className="font-bold text-primary">{ventaCompletada.numeroDocumento}</span>
-                            </p>
-                            <p className="text-3xl font-bold text-emerald-500 mb-6">Bs. {ventaCompletada.total.toFixed(2)}</p>
-
-                            {/* Buttons */}
-                            <div className="w-full space-y-3">
+                            {/* Action Buttons */}
+                            <div className="p-4 border-t border-gray-200 flex gap-3 print:hidden">
                                 <button
-                                    onClick={() => {
-                                        setShowVentaExitosaModal(false);
-                                        setShowTicketModal(true);
-                                    }}
-                                    className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
-                                >
-                                    <span className="material-symbols-outlined">receipt_long</span>
-                                    Ver e Imprimir Ticket
-                                </button>
-                                <button
-                                    onClick={() => setShowVentaExitosaModal(false)}
-                                    className="w-full py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                                    onClick={() => setShowTicketModal(false)}
+                                    className="flex-1 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-all"
                                 >
                                     Cerrar
                                 </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal Ticket de Venta */}
-            {showTicketModal && ventaCompletada && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div
-                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        onClick={() => setShowTicketModal(false)}
-                    />
-                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto scale-in">
-                        {/* Ticket Content for Printing */}
-                        <div id="ticket-print" className="p-6 bg-white">
-                            {/* Header */}
-                            <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-                                <div className="border-2 border-gray-800 px-4 py-2 inline-block mb-2">
-                                    <span className="text-xs">TU LOGO</span>
-                                    <p className="font-bold text-lg">AQUÍ</p>
-                                </div>
-                                <p className="font-bold text-lg">{ventaCompletada.sucursal}</p>
-                                <p className="text-sm text-gray-500">-</p>
-                            </div>
-
-                            {/* Document Info */}
-                            <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-                                <p className="font-bold capitalize">{ventaCompletada.tipoDocumento}</p>
-                                <p className="text-primary font-bold">{ventaCompletada.numeroDocumento}</p>
-                                <div className="flex justify-between text-xs mt-2">
-                                    <span><strong>FECHA:</strong> {ventaCompletada.fecha.toLocaleDateString('es-ES')}</span>
-                                    <span><strong>HORA:</strong> {ventaCompletada.fecha.toLocaleTimeString('es-ES')}</span>
-                                </div>
-                                <p className="text-xs mt-1"><strong>CAJERO:</strong> {ventaCompletada.vendedor}</p>
-                            </div>
-
-                            {/* Client Info */}
-                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-                                <p className="font-bold text-sm">CLIENTE:</p>
-                                <p className="text-sm">NOMBRES: {ventaCompletada.cliente}</p>
-                                <p className="text-sm">DOC.ID: -</p>
-                                <p className="text-sm">DIRECC.: -</p>
-                            </div>
-
-                            {/* Products Table */}
-                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-                                <div className="text-xs font-bold border-b border-gray-300 pb-1 mb-2">
-                                    <div className="flex justify-between">
-                                        <span className="w-1/2">CÓDIGO - DESCRIPCIÓN</span>
-                                        <span className="w-1/6 text-center">CANT.</span>
-                                        <span className="w-1/6 text-right">PRECIO</span>
-                                        <span className="w-1/6 text-right">TOTAL</span>
-                                    </div>
-                                </div>
-                                {ventaCompletada.items.map((item, index) => (
-                                    <div key={index} className="text-xs mb-1">
-                                        <p className="truncate">{item.nombre}</p>
-                                        <div className="flex justify-between">
-                                            <span className="w-1/2"></span>
-                                            <span className="w-1/6 text-center">{item.cantidad}</span>
-                                            <span className="w-1/6 text-right">{item.precioUnit.toFixed(2)}</span>
-                                            <span className="w-1/6 text-right">{item.subtotal.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Totals */}
-                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-                                <div className="flex justify-between text-sm">
-                                    <span className="font-bold">SUBTOTAL: Bs.</span>
-                                    <span>{ventaCompletada.subtotal.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="font-bold">DESCUENTO: Bs.</span>
-                                    <span>{ventaCompletada.descuento.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-lg font-bold mt-2">
-                                    <span>TOTAL: Bs.</span>
-                                    <span>{ventaCompletada.total.toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            {/* Payment Info */}
-                            <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4 text-center">
-                                <p className="font-bold text-sm">FORMA DE PAGO:</p>
-                                <div className="flex justify-between text-sm mt-1">
-                                    <span className="capitalize">{ventaCompletada.metodoPago}: Bs.</span>
-                                    <span>{ventaCompletada.montoRecibido.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span>Vuelto: Bs.</span>
-                                    <span>{ventaCompletada.vuelto.toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            {/* Footer */}
-                            <div className="text-center text-xs text-gray-500">
-                                <p>¡Gracias por su compra!</p>
-                                <p className="mt-2">{ventaCompletada.sucursal} - {ventaCompletada.caja}</p>
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="p-4 border-t border-gray-200 flex gap-3 print:hidden">
-                            <button
-                                onClick={() => setShowTicketModal(false)}
-                                className="flex-1 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-all"
-                            >
-                                Cerrar
-                            </button>
-                            <button
-                                onClick={() => {
-                                    const ticketContent = document.getElementById('ticket-print').innerHTML;
-                                    const printWindow = window.open('', '_blank', 'width=300,height=600');
-                                    printWindow.document.write(`
+                                <button
+                                    onClick={() => {
+                                        const ticketContent = document.getElementById('ticket-print').innerHTML;
+                                        const printWindow = window.open('', '_blank', 'width=300,height=600');
+                                        printWindow.document.write(`
                                         <html>
                                             <head>
                                                 <title>Ticket de Venta</title>
@@ -1459,20 +1715,21 @@ export default function PuntoVenta() {
                                             <body>${ticketContent}</body>
                                         </html>
                                     `);
-                                    printWindow.document.close();
-                                    printWindow.focus();
-                                    printWindow.print();
-                                    printWindow.close();
-                                }}
-                                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
-                            >
-                                <span className="material-symbols-outlined text-lg">print</span>
-                                Imprimir
-                            </button>
+                                        printWindow.document.close();
+                                        printWindow.focus();
+                                        printWindow.print();
+                                        printWindow.close();
+                                    }}
+                                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
+                                >
+                                    <span className="material-symbols-outlined text-lg">print</span>
+                                    Imprimir
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
