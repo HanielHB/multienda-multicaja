@@ -18,6 +18,12 @@ export default function Sucursales() {
     const [cajaForm, setCajaForm] = useState({ nombre: '' });
     const [formLoading, setFormLoading] = useState(false);
 
+    // Delete confirmation modal states
+    const [isDeleteCajaModalOpen, setIsDeleteCajaModalOpen] = useState(false);
+    const [deletingCajaId, setDeletingCajaId] = useState(null);
+    const [deletingCajaName, setDeletingCajaName] = useState('');
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
     useEffect(() => {
         fetchSucursales();
     }, []);
@@ -169,12 +175,26 @@ export default function Sucursales() {
         }
     };
 
-    const handleDeleteCaja = async (cajaId) => {
-        if (!window.confirm('¿Estás seguro de eliminar esta caja?')) return;
+    // Delete Caja Modal Handlers
+    const openDeleteCajaModal = (caja) => {
+        setDeletingCajaId(caja.id);
+        setDeletingCajaName(caja.nombre);
+        setIsDeleteCajaModalOpen(true);
+    };
+
+    const closeDeleteCajaModal = () => {
+        setIsDeleteCajaModalOpen(false);
+        setDeletingCajaId(null);
+        setDeletingCajaName('');
+    };
+
+    const handleDeleteCaja = async () => {
+        if (!deletingCajaId) return;
+        setDeleteLoading(true);
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/cajas/${cajaId}`, {
+            const response = await fetch(`${API_URL}/cajas/${deletingCajaId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -183,9 +203,12 @@ export default function Sucursales() {
                 throw new Error('Error al eliminar caja');
             }
 
+            closeDeleteCajaModal();
             fetchSucursales();
         } catch (err) {
             alert('Error: ' + err.message);
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -324,7 +347,7 @@ export default function Sucursales() {
                                                     <span className="material-symbols-outlined text-[18px]">edit</span>
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteCaja(caja.id)}
+                                                    onClick={() => openDeleteCajaModal(caja)}
                                                     className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-red-50 hover:text-destructive-red dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
                                                     title="Eliminar caja"
                                                 >
@@ -491,6 +514,62 @@ export default function Sucursales() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Confirmar Eliminación de Caja */}
+            {isDeleteCajaModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeDeleteCajaModal} />
+                    <div className="relative w-full max-w-sm bg-white dark:bg-background-dark rounded-2xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden">
+                        <div className="relative px-6 py-5 border-b border-border-light dark:border-border-dark bg-gradient-to-r from-red-500/5 to-red-600/5">
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg">
+                                    <span className="material-symbols-outlined text-2xl">delete</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                        Eliminar Caja
+                                    </h2>
+                                    <p className="text-sm text-neutral-gray">
+                                        Esta acción no se puede deshacer
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={closeDeleteCajaModal}
+                                className="absolute top-4 right-4 flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div className="p-6">
+                            <p className="text-gray-700 dark:text-gray-300 text-center">
+                                ¿Estás seguro de eliminar la caja <span className="font-bold text-gray-900 dark:text-white">"{deletingCajaName}"</span>?
+                            </p>
+
+                            <div className="flex items-center justify-center gap-3 pt-6 mt-6 border-t border-border-light dark:border-border-dark">
+                                <button
+                                    type="button"
+                                    onClick={closeDeleteCajaModal}
+                                    disabled={deleteLoading}
+                                    className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-gray-600 dark:text-gray-300 font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteCaja}
+                                    disabled={deleteLoading}
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-all shadow-sm disabled:opacity-50"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                    {deleteLoading ? 'Eliminando...' : 'Eliminar'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

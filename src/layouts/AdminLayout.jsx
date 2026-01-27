@@ -19,7 +19,7 @@ export default function AdminLayout() {
                 <span className="material-symbols-outlined text-primary text-2xl">store</span>
               </div>
               <div className="flex flex-col">
-                <h1 className="text-dark-charcoal dark:text-white text-base font-bold leading-normal">Zapatería Veloz</h1>
+                <h1 className="text-dark-charcoal dark:text-white text-base font-bold leading-normal">Zapatería Telléz</h1>
                 <p className="text-neutral-gray text-sm font-normal leading-normal">Panel Admin</p>
               </div>
             </div>

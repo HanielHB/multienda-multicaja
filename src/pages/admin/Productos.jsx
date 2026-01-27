@@ -6,6 +6,7 @@ const API_URL = '/api';
 export default function Productos() {
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
+    const [sucursales, setSucursales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -15,6 +16,12 @@ export default function Productos() {
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
     const [stockFilter, setStockFilter] = useState('');
+    const [sucursalFilter, setSucursalFilter] = useState('');
+
+    // Estado para modal de eliminar
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [productoToDelete, setProductoToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Función para determinar el estado de stock de un producto
     const getStockStatusValue = (producto) => {
@@ -43,7 +50,11 @@ export default function Productos() {
         const matchesStock = !stockFilter || 
             getStockStatusValue(producto) === stockFilter;
 
-        return matchesSearch && matchesCategory && matchesStock;
+        // Filtro de sucursal
+        const matchesSucursal = !sucursalFilter || 
+            producto.sucursalId?.toString() === sucursalFilter;
+
+        return matchesSearch && matchesCategory && matchesStock && matchesSucursal;
     });
 
     // Calcular productos para la página actual (usando productos filtrados)
@@ -64,11 +75,12 @@ export default function Productos() {
     // Resetear página cuando cambian los filtros
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, categoryFilter, stockFilter]);
+    }, [searchTerm, categoryFilter, stockFilter, sucursalFilter]);
 
     useEffect(() => {
         fetchProductos();
         fetchCategorias();
+        fetchSucursales();
     }, []);
 
     const fetchCategorias = async () => {
@@ -86,6 +98,24 @@ export default function Productos() {
             }
         } catch (err) {
             console.error('Error fetching categorias:', err);
+        }
+    };
+
+    const fetchSucursales = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/sucursales`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.ok) {
+                const result = await response.json();
+                setSucursales(result.data || result || []);
+            }
+        } catch (err) {
+            console.error('Error fetching sucursales:', err);
         }
     };
 
@@ -114,8 +144,7 @@ export default function Productos() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('¿Estás seguro de eliminar este producto?')) return;
-
+        setDeleting(true);
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/productos/${id}`, {
@@ -130,11 +159,25 @@ export default function Productos() {
                 throw new Error('Error al eliminar producto');
             }
 
-            // Refresh the list
+            // Close modal and refresh list
+            setShowDeleteModal(false);
+            setProductoToDelete(null);
             fetchProductos();
         } catch (err) {
             alert('Error al eliminar: ' + err.message);
+        } finally {
+            setDeleting(false);
         }
+    };
+
+    const openDeleteModal = (producto) => {
+        setProductoToDelete(producto);
+        setShowDeleteModal(true);
+    };
+
+    const closeDeleteModal = () => {
+        setShowDeleteModal(false);
+        setProductoToDelete(null);
     };
 
     const getStockStatus = (producto) => {
@@ -376,6 +419,16 @@ export default function Productos() {
                         <option value="low_stock">Stock Bajo</option>
                         <option value="out_of_stock">Agotado</option>
                     </select>
+                    <select 
+                        className="px-4 py-2.5 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer min-w-[160px]"
+                        value={sucursalFilter}
+                        onChange={(e) => setSucursalFilter(e.target.value)}
+                    >
+                        <option value="">Todas las Sucursales</option>
+                        {sucursales.map(suc => (
+                            <option key={suc.id} value={suc.id}>{suc.nombre}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
@@ -412,8 +465,23 @@ export default function Productos() {
                                         <tr key={producto.id} className="group hover:bg-background-light dark:hover:bg-gray-700/50 transition-colors">
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="size-12 rounded-lg bg-background-light dark:bg-gray-700 flex-shrink-0 flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-neutral-gray">
+                                                    {/* Imagen del producto */}
+                                                    <div className="size-12 rounded-lg bg-background-light dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                                        {producto.imagen ? (
+                                                            <img 
+                                                                src={producto.imagen} 
+                                                                alt={producto.nombre}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                    e.target.nextSibling.style.display = 'flex';
+                                                                }}
+                                                            />
+                                                        ) : null}
+                                                        <span 
+                                                            className="material-symbols-outlined text-neutral-gray"
+                                                            style={{ display: producto.imagen ? 'none' : 'block' }}
+                                                        >
                                                             {getCategoryIcon(producto.categoria?.nombre)}
                                                         </span>
                                                     </div>
@@ -471,7 +539,7 @@ export default function Productos() {
                                                         <span className="hidden sm:inline">Editar</span>
                                                     </Link>
                                                     <button
-                                                        onClick={() => handleDelete(producto.id)}
+                                                        onClick={() => openDeleteModal(producto)}
                                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-destructive-red bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors border border-transparent"
                                                         title="Eliminar Producto"
                                                     >
@@ -515,6 +583,62 @@ export default function Productos() {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && productoToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={closeDeleteModal}
+                    />
+                    {/* Modal */}
+                    <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 animate-in fade-in zoom-in duration-200">
+                        {/* Icon */}
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-red-500 text-[32px]">delete_forever</span>
+                            </div>
+                        </div>
+                        {/* Content */}
+                        <div className="text-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                ¿Eliminar producto?
+                            </h3>
+                            <p className="text-neutral-gray dark:text-gray-400">
+                                Estás a punto de eliminar <span className="font-semibold text-gray-900 dark:text-white">"{productoToDelete.nombre}"</span>. Esta acción no se puede deshacer.
+                            </p>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={closeDeleteModal}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => handleDelete(productoToDelete.id)}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {deleting ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Eliminando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                                        Eliminar
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -11,6 +11,7 @@ export default function AddProducto() {
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(false);
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState({});
 
     // Form state
     const [formData, setFormData] = useState({
@@ -27,6 +28,11 @@ export default function AddProducto() {
         stock: 0,
         stockMinimo: 5
     });
+
+    // Estado para imagen
+    const [imagenFile, setImagenFile] = useState(null);
+    const [imagenPreview, setImagenPreview] = useState(null);
+    const [imagenActual, setImagenActual] = useState(null);
 
     // Data for dropdowns
     const [categorias, setCategorias] = useState([]);
@@ -70,6 +76,12 @@ export default function AddProducto() {
                     stock: producto.stock || 0,
                     stockMinimo: producto.stockMinimo || 5
                 });
+                
+                // Guardar imagen actual si existe
+                if (producto.imagen) {
+                    setImagenActual(producto.imagen);
+                    setImagenPreview(producto.imagen);
+                }
             } else {
                 throw new Error('Error al cargar el producto');
             }
@@ -131,6 +143,82 @@ export default function AddProducto() {
             ...prev,
             [name]: value
         }));
+        // Clear error when user starts typing
+        if (fieldErrors[name]) {
+            setFieldErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+    };
+
+    // Manejar selección de imagen
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validar tipo de archivo
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                setError('Solo se permiten imágenes (JPG, PNG, GIF, WEBP)');
+                return;
+            }
+            // Validar tamaño (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                setError('La imagen no puede superar 5MB');
+                return;
+            }
+            setImagenFile(file);
+            // Crear preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagenPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Eliminar imagen seleccionada
+    const removeImage = () => {
+        setImagenFile(null);
+        setImagenPreview(imagenActual); // Volver a la imagen actual si existe
+    };
+
+    const validateForm = () => {
+        const errors = {};
+        
+        if (!formData.nombre.trim()) {
+            errors.nombre = 'El nombre del producto es requerido';
+        }
+        if (!formData.categoriaId) {
+            errors.categoriaId = 'Seleccione una categoría';
+        }
+        if (!formData.sucursalId) {
+            errors.sucursalId = 'Seleccione una sucursal';
+        }
+        if (!formData.almacenId) {
+            errors.almacenId = 'Seleccione un almacén';
+        }
+        if (!formData.precioCompra || parseFloat(formData.precioCompra) <= 0) {
+            errors.precioCompra = 'Ingrese un precio de compra válido';
+        }
+        if (!formData.precioVenta || parseFloat(formData.precioVenta) <= 0) {
+            errors.precioVenta = 'Ingrese un precio de venta válido';
+        }
+        if (!formData.talla || !formData.talla.trim()) {
+            errors.talla = 'La talla es requerida';
+        }
+        if (!formData.color || !formData.color.trim()) {
+            errors.color = 'El color es requerido';
+        }
+        if (!formData.codigoBarras || !formData.codigoBarras.trim()) {
+            errors.codigoBarras = 'El código de barras es requerido';
+        }
+        if (!formData.codigoInterno || !formData.codigoInterno.trim()) {
+            errors.codigoInterno = 'El código interno es requerido';
+        }
+        
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
     };
 
     const generateCodigoInterno = () => {
@@ -144,26 +232,36 @@ export default function AddProducto() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        
+        // Validate form before submission
+        if (!validateForm()) {
+            return;
+        }
+        
         setLoading(true);
 
         try {
             const token = localStorage.getItem('token');
 
-            // Prepare data
-            const dataToSend = {
-                nombre: formData.nombre,
-                categoriaId: parseInt(formData.categoriaId),
-                sucursalId: parseInt(formData.sucursalId),
-                almacenId: parseInt(formData.almacenId),
-                talla: formData.talla || null,
-                color: formData.color || null,
-                precioCompra: parseFloat(formData.precioCompra),
-                precioVenta: parseFloat(formData.precioVenta),
-                codigoBarras: formData.codigoBarras || null,
-                codigoInterno: formData.codigoInterno || null,
-                stock: parseInt(formData.stock) || 0,
-                stockMinimo: parseInt(formData.stockMinimo) || 5
-            };
+            // Usar FormData para enviar archivos
+            const formDataToSend = new FormData();
+            formDataToSend.append('nombre', formData.nombre);
+            formDataToSend.append('categoriaId', formData.categoriaId);
+            formDataToSend.append('sucursalId', formData.sucursalId);
+            formDataToSend.append('almacenId', formData.almacenId);
+            formDataToSend.append('talla', formData.talla || '');
+            formDataToSend.append('color', formData.color || '');
+            formDataToSend.append('precioCompra', formData.precioCompra);
+            formDataToSend.append('precioVenta', formData.precioVenta);
+            formDataToSend.append('codigoBarras', formData.codigoBarras || '');
+            formDataToSend.append('codigoInterno', formData.codigoInterno || '');
+            formDataToSend.append('stock', formData.stock || 0);
+            formDataToSend.append('stockMinimo', formData.stockMinimo || 5);
+            
+            // Agregar imagen si se seleccionó una nueva
+            if (imagenFile) {
+                formDataToSend.append('imagen', imagenFile);
+            }
 
             const url = isEditing ? `${API_URL}/productos/${id}` : `${API_URL}/productos`;
             const method = isEditing ? 'PUT' : 'POST';
@@ -171,10 +269,10 @@ export default function AddProducto() {
             const response = await fetch(url, {
                 method: method,
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${token}`
+                    // NO incluir Content-Type, el navegador lo agrega automáticamente con boundary
                 },
-                body: JSON.stringify(dataToSend)
+                body: formDataToSend
             });
 
             const result = await response.json();
@@ -252,11 +350,69 @@ export default function AddProducto() {
                             name="nombre"
                             value={formData.nombre}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
+                            className={`w-full rounded-lg border ${fieldErrors.nombre ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                             placeholder="Ej. Zapatillas Deportivas Air Run"
                             type="text"
-                            required
                         />
+                        {fieldErrors.nombre && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.nombre}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Imagen del Producto */}
+                    <div className="col-span-1 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Imagen del Producto</label>
+                        <div className="flex items-start gap-4">
+                            {/* Preview de imagen */}
+                            <div className="size-24 rounded-lg border-2 border-dashed border-border-light dark:border-border-dark bg-background-light dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                                {imagenPreview ? (
+                                    <img 
+                                        src={imagenPreview.startsWith('data:') ? imagenPreview : imagenPreview} 
+                                        alt="Preview" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="material-symbols-outlined text-neutral-gray text-3xl">image</span>
+                                )}
+                            </div>
+                            
+                            {/* Input de archivo */}
+                            <div className="flex-1">
+                                <input
+                                    type="file"
+                                    id="imagen"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                />
+                                <div className="flex gap-2">
+                                    <label
+                                        htmlFor="imagen"
+                                        className="px-4 py-2 bg-background-light hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-border-light dark:border-border-dark cursor-pointer transition-colors flex items-center gap-2"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">upload</span>
+                                        {imagenPreview ? 'Cambiar imagen' : 'Subir imagen'}
+                                    </label>
+                                    {imagenFile && (
+                                        <button
+                                            type="button"
+                                            onClick={removeImage}
+                                            className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">close</span>
+                                            Quitar
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-neutral-gray mt-2">JPG, PNG, GIF o WEBP. Máximo 5MB.</p>
+                                {imagenFile && (
+                                    <p className="text-xs text-primary mt-1">Nueva imagen: {imagenFile.name}</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Categoría */}
@@ -266,40 +422,57 @@ export default function AddProducto() {
                             name="categoriaId"
                             value={formData.categoriaId}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
-                            required
+                            className={`w-full rounded-lg border ${fieldErrors.categoriaId ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                         >
                             <option value="">Seleccionar categoría...</option>
                             {categorias.map(cat => (
                                 <option key={cat.id} value={cat.id}>{cat.nombre}</option>
                             ))}
                         </select>
+                        {fieldErrors.categoriaId && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.categoriaId}
+                            </p>
+                        )}
                     </div>
 
                     {/* Talla */}
                     <div className="col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Talla</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Talla *</label>
                         <input
                             name="talla"
                             value={formData.talla}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
+                            className={`w-full rounded-lg border ${fieldErrors.talla ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                             placeholder="Ej. 38, 39, 40, M, L, XL"
                             type="text"
                         />
+                        {fieldErrors.talla && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.talla}
+                            </p>
+                        )}
                     </div>
 
                     {/* Color */}
                     <div className="col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color *</label>
                         <input
                             name="color"
                             value={formData.color}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
+                            className={`w-full rounded-lg border ${fieldErrors.color ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                             placeholder="Ej. Negro, Blanco, Rojo"
                             type="text"
                         />
+                        {fieldErrors.color && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.color}
+                            </p>
+                        )}
                     </div>
 
                     {/* Precio de Compra */}
@@ -311,13 +484,18 @@ export default function AddProducto() {
                                 name="precioCompra"
                                 value={formData.precioCompra}
                                 onChange={handleChange}
-                                className="w-full pl-7 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
+                                className={`w-full pl-7 rounded-lg border ${fieldErrors.precioCompra ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                                 placeholder="0.00"
                                 step="0.01"
                                 type="number"
-                                required
                             />
                         </div>
+                        {fieldErrors.precioCompra && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.precioCompra}
+                            </p>
+                        )}
                     </div>
 
                     {/* Precio de Venta */}
@@ -329,24 +507,29 @@ export default function AddProducto() {
                                 name="precioVenta"
                                 value={formData.precioVenta}
                                 onChange={handleChange}
-                                className="w-full pl-7 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
+                                className={`w-full pl-7 rounded-lg border ${fieldErrors.precioVenta ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                                 placeholder="0.00"
                                 step="0.01"
                                 type="number"
-                                required
                             />
                         </div>
+                        {fieldErrors.precioVenta && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.precioVenta}
+                            </p>
+                        )}
                     </div>
 
                     {/* Código de Barras */}
                     <div className="col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código de Barras</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código de Barras *</label>
                         <div className="flex gap-2">
                             <input
                                 name="codigoBarras"
                                 value={formData.codigoBarras}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
+                                className={`w-full rounded-lg border ${fieldErrors.codigoBarras ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                                 placeholder="Escaneé o ingrese código"
                                 type="text"
                             />
@@ -354,17 +537,23 @@ export default function AddProducto() {
                                 <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
                             </button>
                         </div>
+                        {fieldErrors.codigoBarras && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.codigoBarras}
+                            </p>
+                        )}
                     </div>
 
                     {/* Código Interno */}
                     <div className="col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código Interno</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código Interno *</label>
                         <div className="flex gap-2">
                             <input
                                 name="codigoInterno"
                                 value={formData.codigoInterno}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
+                                className={`w-full rounded-lg border ${fieldErrors.codigoInterno ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                                 placeholder="Código automático"
                                 type="text"
                             />
@@ -376,6 +565,12 @@ export default function AddProducto() {
                                 Generar
                             </button>
                         </div>
+                        {fieldErrors.codigoInterno && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.codigoInterno}
+                            </p>
+                        )}
                     </div>
 
                     {/* Divider */}
@@ -388,14 +583,19 @@ export default function AddProducto() {
                             name="sucursalId"
                             value={formData.sucursalId}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
-                            required
+                            className={`w-full rounded-lg border ${fieldErrors.sucursalId ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                         >
                             <option value="">Seleccionar sucursal...</option>
                             {sucursales.map(suc => (
                                 <option key={suc.id} value={suc.id}>{suc.nombre}</option>
                             ))}
                         </select>
+                        {fieldErrors.sucursalId && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.sucursalId}
+                            </p>
+                        )}
                     </div>
 
                     {/* Almacén */}
@@ -405,14 +605,19 @@ export default function AddProducto() {
                             name="almacenId"
                             value={formData.almacenId}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary px-3 py-2"
-                            required
+                            className={`w-full rounded-lg border ${fieldErrors.almacenId ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
                         >
                             <option value="">Seleccionar almacén...</option>
                             {almacenes.map(alm => (
                                 <option key={alm.id} value={alm.id}>{alm.nombre}</option>
                             ))}
                         </select>
+                        {fieldErrors.almacenId && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">error</span>
+                                {fieldErrors.almacenId}
+                            </p>
+                        )}
                     </div>
 
                     {/* Stock */}

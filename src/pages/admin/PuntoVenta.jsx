@@ -91,6 +91,7 @@ export default function PuntoVenta() {
                     nombre: p.nombre,
                     precio: parseFloat(p.precioVenta) || parseFloat(p.precio) || 0,
                     stock: parseInt(p.stockActual) || parseInt(p.stock) || 0,
+                    imagen: p.imagen,
                     icon: getProductIcon(p.categoriaId),
                     color: getProductColor(p.categoriaId)
                 }));
@@ -521,8 +522,21 @@ export default function PuntoVenta() {
                                             }}
                                             className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                                         >
-                                            <div className={`w-8 h-8 ${product.color} rounded-lg flex items-center justify-center text-white`}>
-                                                <span className="material-symbols-outlined text-sm">{product.icon}</span>
+                                            <div className={`w-10 h-10 flex-shrink-0 ${product.imagen ? 'bg-transparent' : product.color} rounded-lg flex items-center justify-center overflow-hidden`}>
+                                                {product.imagen ? (
+                                                    <img 
+                                                        src={product.imagen} 
+                                                        alt={product.nombre}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                            e.target.nextSibling.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <div className={`w-full h-full ${product.color} flex items-center justify-center text-white`} style={{ display: product.imagen ? 'none' : 'flex' }}>
+                                                     <span className="material-symbols-outlined text-sm">{product.icon}</span>
+                                                </div>
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.nombre}</p>
@@ -607,8 +621,24 @@ export default function PuntoVenta() {
                                 className="product-card scale-in bg-white dark:bg-gray-800 rounded-xl p-4 text-left shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer"
                                 style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }}
                             >
-                                <div className={`w-12 h-12 ${product.color} rounded-xl flex items-center justify-center text-white mb-3 shadow-lg`}>
-                                    <span className="material-symbols-outlined text-2xl">{product.icon}</span>
+                                <div className={`w-full aspect-square rounded-xl bg-gray-50 dark:bg-gray-700/50 mb-3 overflow-hidden flex items-center justify-center relative shadow-sm`}>
+                                    {product.imagen ? (
+                                        <img 
+                                            src={product.imagen} 
+                                            alt={product.nombre}
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'flex';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <div className={`w-full h-full flex items-center justify-center text-white ${product.color}`} style={{ display: product.imagen ? 'none' : 'flex' }}>
+                                        <span className="material-symbols-outlined text-5xl opacity-80">{product.icon}</span>
+                                    </div>
+                                    <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-[10px] font-bold text-white shadow-sm ${product.stock > 10 ? 'bg-emerald-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
+                                        {product.stock}
+                                    </div>
                                 </div>
                                 <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">{product.nombre}</h3>
                                 <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">

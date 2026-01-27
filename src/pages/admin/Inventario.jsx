@@ -9,6 +9,8 @@ export default function Inventario() {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchProduct, setSearchProduct] = useState('');
     const [esTransferencia, setEsTransferencia] = useState(false);
+    const [fechaInicio, setFechaInicio] = useState('');
+    const [fechaFin, setFechaFin] = useState('');
     const [formData, setFormData] = useState({
         sucursalId: '',
         almacenId: '',
@@ -84,7 +86,7 @@ export default function Inventario() {
     };
 
     // Fetch almacenes where product exists
-    const fetchAlmacenesProducto = async (productoId) => {
+    const fetchAlmacenesProducto = async (productoId, producto = null) => {
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/inventarios/producto/${productoId}`, {
@@ -95,7 +97,20 @@ export default function Inventario() {
             });
             if (response.ok) {
                 const data = await response.json();
-                const almacenesConStock = data.detalle?.filter(inv => inv.cantidad > 0) || [];
+                let almacenesConStock = data.detalle?.filter(inv => inv.cantidad >= 0) || [];
+                
+                // Si no hay inventarios pero el producto tiene un almacén asignado, usarlo
+                if (almacenesConStock.length === 0 && producto?.almacenId) {
+                    const almacenProducto = almacenes.find(a => a.id === producto.almacenId);
+                    if (almacenProducto) {
+                        almacenesConStock = [{
+                            almacenId: producto.almacenId,
+                            almacen: almacenProducto,
+                            cantidad: producto.stock || 0
+                        }];
+                    }
+                }
+                
                 setAlmacenesProducto(almacenesConStock);
                 
                 // Auto-select if only one almacen
@@ -111,15 +126,35 @@ export default function Inventario() {
         }
     };
 
-    // Filter movimientos based on search
+    // Filter movimientos based on search and date
     const filteredMovimientos = movimientos.filter(mov => {
         const searchLower = searchTerm.toLowerCase();
-        return !searchTerm ||
+        const matchesSearch = !searchTerm ||
             mov.producto?.nombre?.toLowerCase().includes(searchLower) ||
             mov.almacen?.nombre?.toLowerCase().includes(searchLower) ||
             mov.almacen?.sucursal?.nombre?.toLowerCase().includes(searchLower) ||
             mov.motivo?.toLowerCase().includes(searchLower) ||
             mov.tipo?.toLowerCase().includes(searchLower);
+        
+        // Filtro de fecha
+        let matchesDate = true;
+        if (fechaInicio || fechaFin) {
+            const movDate = new Date(mov.createdAt || mov.fecha);
+            movDate.setHours(0, 0, 0, 0);
+            
+            if (fechaInicio) {
+                const startDate = new Date(fechaInicio);
+                startDate.setHours(0, 0, 0, 0);
+                matchesDate = matchesDate && movDate >= startDate;
+            }
+            if (fechaFin) {
+                const endDate = new Date(fechaFin);
+                endDate.setHours(23, 59, 59, 999);
+                matchesDate = matchesDate && movDate <= endDate;
+            }
+        }
+        
+        return matchesSearch && matchesDate;
     });
 
     // Pagination logic
@@ -148,8 +183,8 @@ export default function Inventario() {
         setSearchProduct(producto.nombre);
         setFormData(prev => ({ ...prev, almacenId: '' }));
         
-        // Fetch almacenes where this product exists
-        fetchAlmacenesProducto(producto.id);
+        // Fetch almacenes where this product exists, passing the product for fallback
+        fetchAlmacenesProducto(producto.id, producto);
     };
 
     const handleSubmit = async (e) => {
@@ -169,36 +204,28 @@ export default function Inventario() {
             const token = localStorage.getItem('token');
             
             if (esTransferencia) {
-                // Transferencia: salida del origen + entrada al destino
-                // 1. Salida del almacén origen
-                await fetch(`${API_URL}/inventarios/ajuste`, {
-                    method: 'PATCH',
+                // Transferencia: usar el nuevo endpoint que busca producto equivalente
+                const transferResponse = await fetch(`${API_URL}/inventarios/transferir`, {
+                    method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        productoId: productoSeleccionado.id,
-                        almacenId: parseInt(formData.almacenId),
-                        ajuste: -parseInt(formData.cantidad),
-                        motivo: 'transferencia entre almacenes - salida'
+                        productoOrigenId: productoSeleccionado.id,
+                        almacenOrigenId: parseInt(formData.almacenId),
+                        almacenDestinoId: parseInt(formData.almacenDestinoId),
+                        cantidad: parseInt(formData.cantidad)
                     })
                 });
-
-                // 2. Entrada al almacén destino
-                await fetch(`${API_URL}/inventarios/ajuste`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        productoId: productoSeleccionado.id,
-                        almacenId: parseInt(formData.almacenDestinoId),
-                        ajuste: parseInt(formData.cantidad),
-                        motivo: 'transferencia entre almacenes - entrada'
-                    })
-                });
+                
+                if (!transferResponse.ok) {
+                    const errorData = await transferResponse.json();
+                    throw new Error(errorData.error || 'Error en la transferencia');
+                }
+                
+                const result = await transferResponse.json();
+                console.log('Transferencia exitosa:', result);
 
                 fetchInitialData();
                 closeModal();
@@ -234,7 +261,7 @@ export default function Inventario() {
             }
         } catch (err) {
             console.error('Error:', err);
-            alert('Error al registrar el movimiento');
+            alert('Error al registrar el movimiento: ' + err.message);
         }
     };
 
@@ -316,8 +343,49 @@ export default function Inventario() {
 
             {/* Table Card */}
             <div className="bg-white dark:bg-background-dark dark:border dark:border-border-dark rounded-xl shadow-sm border border-border-light overflow-hidden">
-                {/* Search Bar */}
-                <div className="p-4 border-b border-border-light dark:border-border-dark flex justify-end">
+                {/* Search and Date Filter Bar */}
+                <div className="p-4 border-b border-border-light dark:border-border-dark flex flex-col sm:flex-row gap-4 items-center justify-between">
+                    {/* Date Filters */}
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm text-neutral-gray whitespace-nowrap">Desde:</label>
+                            <input
+                                type="date"
+                                value={fechaInicio}
+                                onChange={(e) => {
+                                    setFechaInicio(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="px-3 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm text-neutral-gray whitespace-nowrap">Hasta:</label>
+                            <input
+                                type="date"
+                                value={fechaFin}
+                                onChange={(e) => {
+                                    setFechaFin(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="px-3 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
+                            />
+                        </div>
+                        {(fechaInicio || fechaFin) && (
+                            <button
+                                onClick={() => {
+                                    setFechaInicio('');
+                                    setFechaFin('');
+                                    setCurrentPage(1);
+                                }}
+                                className="px-3 py-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-1"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                Limpiar
+                            </button>
+                        )}
+                    </div>
+                    {/* Search Input */}
                     <div className="relative w-full sm:w-64">
                         <span className="material-symbols-outlined absolute left-3 top-2.5 text-neutral-gray text-[20px]">search</span>
                         <input
@@ -596,18 +664,18 @@ export default function Inventario() {
                                         required
                                     >
                                         <option value="">Seleccionar almacén...</option>
-                                        {activeTab === 'Ingreso' ? (
-                                            almacenes.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)
-                                        ) : (
+                                        {productoSeleccionado && almacenesProducto.length > 0 ? (
                                             almacenesProducto.map(ap => (
                                                 <option key={ap.almacenId} value={ap.almacenId}>
-                                                    {ap.almacen?.nombre} ({ap.cantidad} disponibles)
+                                                    {ap.almacen?.nombre}{activeTab === 'Salida' ? ` (${ap.cantidad} disponibles)` : ''}
                                                 </option>
                                             ))
-                                        )}
+                                        ) : !productoSeleccionado ? (
+                                            <option value="" disabled>Primero selecciona un producto</option>
+                                        ) : null}
                                     </select>
-                                    {activeTab === 'Salida' && productoSeleccionado && almacenesProducto.length === 0 && (
-                                        <p className="text-xs text-amber-600 mt-1">Este producto no tiene stock en ningún almacén</p>
+                                    {productoSeleccionado && almacenesProducto.length === 0 && (
+                                        <p className="text-xs text-amber-600 mt-1">Este producto no tiene inventario registrado en ningún almacén</p>
                                     )}
                                 </div>
 

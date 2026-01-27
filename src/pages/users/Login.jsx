@@ -152,7 +152,7 @@ export default function Login() {
             {/* Footer Section */}
             <div className="pt-4 border-t border-border-light dark:border-border-dark text-center">
               <p className="text-neutral-gray dark:text-gray-500 text-xs">
-                © 2024 Zapatería Veloz. Todos los derechos reservados.
+                © 2026 Zapatería Telléz. Todos los derechos reservados.
               </p>
             </div>
           </div>

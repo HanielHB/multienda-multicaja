@@ -9,7 +9,13 @@ export default function Categorias() {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+
     const itemsPerPage = 10;
+
+    // Estado para modal de eliminar
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Filtrar categorías
     const filteredCategorias = categorias.filter(cat => {
@@ -59,8 +65,7 @@ export default function Categorias() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('¿Estás seguro de eliminar esta categoría?')) return;
-
+        setDeleting(true);
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(`${API_URL}/categorias/${id}`, {
@@ -72,10 +77,25 @@ export default function Categorias() {
                 throw new Error('Error al eliminar categoría');
             }
 
+            // Close modal and refresh list
+            setShowDeleteModal(false);
+            setCategoryToDelete(null);
             fetchCategorias();
         } catch (err) {
             alert('Error al eliminar: ' + err.message);
+        } finally {
+            setDeleting(false);
         }
+    };
+
+    const openDeleteModal = (category) => {
+        setCategoryToDelete(category);
+        setShowDeleteModal(true);
+    };
+
+    const closeDeleteModal = () => {
+        setShowDeleteModal(false);
+        setCategoryToDelete(null);
     };
 
     const getIconColor = (index) => {
@@ -225,7 +245,7 @@ export default function Categorias() {
                                                     <span className="material-symbols-outlined text-[20px]">edit</span>
                                                 </Link>
                                                 <button
-                                                    onClick={() => handleDelete(categoria.id)}
+                                                    onClick={() => openDeleteModal(categoria)}
                                                     className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-red-50 hover:text-destructive-red dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
                                                     title="Eliminar"
                                                 >
@@ -267,6 +287,63 @@ export default function Categorias() {
                     </div>
                 </div>
             </div>
+
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && categoryToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={closeDeleteModal}
+                    />
+                    {/* Modal */}
+                    <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 animate-in fade-in zoom-in duration-200">
+                        {/* Icon */}
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-red-500 text-[32px]">delete_forever</span>
+                            </div>
+                        </div>
+                        {/* Content */}
+                        <div className="text-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                ¿Eliminar categoría?
+                            </h3>
+                            <p className="text-neutral-gray dark:text-gray-400">
+                                Estás a punto de eliminar <span className="font-semibold text-gray-900 dark:text-white">"{categoryToDelete.nombre}"</span>. Esta acción no se puede deshacer.
+                            </p>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={closeDeleteModal}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => handleDelete(categoryToDelete.id)}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {deleting ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Eliminando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                                        Eliminar
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
