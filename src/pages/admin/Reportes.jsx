@@ -66,95 +66,122 @@ export default function Reportes() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-dark-charcoal dark:text-white">Reportes y Estadísticas</h1>
-                    <p className="text-neutral-gray dark:text-gray-400">Visualiza el rendimiento de tu negocio</p>
-                </div>
-                    <div className="flex gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 items-center">
-                        <div className="flex flex-col sm:flex-row gap-2 items-center">
-                            <input 
-                                type="date" 
-                                value={startDate} 
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            />
-                            <span className="text-gray-400">-</span>
-                            <input 
-                                type="date" 
-                                value={endDate} 
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            />
+        <>
+            <style>{`
+                @media print {
+                    /* Hide everything except printable area */
+                    body * {
+                        visibility: hidden;
+                    }
+                    .printable-area, .printable-area * {
+                        visibility: visible;
+                    }
+                    .printable-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                    /* Hide print controls */
+                    .no-print {
+                        display: none !important;
+                    }
+                    /* Adjust page for print */
+                    @page {
+                        margin: 1cm;
+                    }
+                }
+            `}</style>
+            <div className="flex flex-col gap-6">
+                {/* Header */}
+                <div className="flex items-center justify-between no-print">
+                    <div>
+                        <h1 className="text-2xl font-bold text-dark-charcoal dark:text-white">Reportes y Estadísticas</h1>
+                        <p className="text-neutral-gray dark:text-gray-400">Visualiza el rendimiento de tu negocio</p>
+                    </div>
+                        <div className="flex gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 items-center">
+                            <div className="flex flex-col sm:flex-row gap-2 items-center">
+                                <input 
+                                    type="date" 
+                                    value={startDate} 
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                />
+                                <span className="text-gray-400">-</span>
+                                <input 
+                                    type="date" 
+                                    value={endDate} 
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                />
+                            </div>
+                            <button 
+                                onClick={handleGenerate}
+                                className="bg-primary text-white px-3 py-1 rounded-md text-sm font-bold hover:bg-primary/90 flex items-center gap-1"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">refresh</span>
+                                Generar
+                            </button>
                         </div>
-                        <button 
-                            onClick={handleGenerate}
-                            className="bg-primary text-white px-3 py-1 rounded-md text-sm font-bold hover:bg-primary/90 flex items-center gap-1"
-                        >
-                            <span className="material-symbols-outlined text-[16px]">refresh</span>
-                            Generar
-                        </button>
-                    </div>
 
-                    <button
-                         onClick={handlePrint}
-                         className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
-                         title="Imprimir / Guardar como PDF"
-                    >
-                        <span className="material-symbols-outlined text-[20px]">print</span>
-                    </button>
+                        <button
+                             onClick={handlePrint}
+                             className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
+                             title="Imprimir / Guardar como PDF"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">print</span>
+                        </button>
 
-                    {/* Tabs */}
-                    <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border border-gray-200 dark:border-gray-700">
-                        <button
-                            onClick={() => setActiveTab('ventas')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'ventas'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Ventas
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('inventario')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'inventario'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Inventario
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('bi')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'bi'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Inteligencia (BI)
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('caja')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'caja'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Caja
-                        </button>
-                    </div>
+                        {/* Tabs */}
+                        <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border border-gray-200 dark:border-gray-700">
+                            <button
+                                onClick={() => setActiveTab('ventas')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'ventas'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Ventas
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('inventario')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'inventario'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Inventario
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('bi')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'bi'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Inteligencia (BI)
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('caja')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'caja'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Caja
+                            </button>
+                        </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 printable-area">
+                    {activeTab === 'ventas' && <ReportesVentas startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
+                    {activeTab === 'inventario' && <ReportesInventario startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
+                    {activeTab === 'bi' && <ReportesBI startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
+                    {activeTab === 'caja' && <ReportesCaja startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
+                </div>
             </div>
-
-            {/* Content */}
-            <div className="flex-1 print:p-0">
-                {activeTab === 'ventas' && <ReportesVentas startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
-                {activeTab === 'inventario' && <ReportesInventario startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
-                {activeTab === 'bi' && <ReportesBI startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
-                {activeTab === 'caja' && <ReportesCaja startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
-            </div>
-        </div>
+        </>
     );
 }
 
@@ -322,7 +349,7 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport }) {
                     <h3 className="font-bold text-gray-900 dark:text-white">Detalle de Ventas</h3>
                     <button 
                         onClick={() => onExport(ventasPeriodo?.detallePorFecha, 'Ventas_Detalle')}
-                        className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                        className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
                     >
                         <span className="material-symbols-outlined text-[18px]">download</span>
                         Exportar CSV
@@ -443,7 +470,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport }) {
                     </div>
                     <button 
                         onClick={() => onExport(productosHueso?.productos, 'Productos_Hueso')}
-                        className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                        className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
                     >
                         <span className="material-symbols-outlined text-[18px]">download</span>
                         Exportar CSV
@@ -581,7 +608,7 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport }) {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="col-span-1 md:col-span-2 flex justify-end">
+            <div className="col-span-1 md:col-span-2 flex justify-end no-print">
                 <button 
                     onClick={() => onExport(topCategorias, 'Top_Categorias')}
                     className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
@@ -663,6 +690,9 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport }) {
 
 function ReportesCaja({ startDate, endDate, shouldFetch, onExport }) {
     const [sesiones, setSesiones] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [modalData, setModalData] = useState({ tipo: '', movimientos: [], sesion: null });
+    const [loadingModal, setLoadingModal] = useState(false);
 
     useEffect(() => {
         fetchReporteCajas();
@@ -681,76 +711,203 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport }) {
         } catch (err) { console.error(err); }
     };
 
+    const handleClickMovimiento = async (sesionId, tipo) => {
+        setLoadingModal(true);
+        setShowModal(true);
+        setModalData({ tipo, movimientos: [], sesion: sesiones.find(s => s.id === sesionId) });
+        
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/sesion-caja/${sesionId}/movimientos?tipo=${tipo}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const json = await res.json();
+                setModalData(prev => ({ ...prev, movimientos: json.data || [] }));
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoadingModal(false);
+        }
+    };
+
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-900 dark:text-white">Historial de Movimientos de Caja</h3>
-                <button 
-                    onClick={() => onExport(sesiones, 'Reporte_Caja')}
-                    className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
-                >
-                    <span className="material-symbols-outlined text-[18px]">download</span>
-                    Exportar CSV
-                </button>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                        <tr>
-                            <th className="px-4 py-3">Apertura / Cierre</th>
-                            <th className="px-4 py-3">Caja / Usuario</th>
-                            <th className="px-4 py-3 text-right text-emerald-600">Efectivo (Ventas)</th>
-                            <th className="px-4 py-3 text-right text-purple-600">QR (Ventas)</th>
-                            <th className="px-4 py-3 text-right text-blue-600">Ingresos</th>
-                            <th className="px-4 py-3 text-right text-red-600">Retiros</th>
-                            <th className="px-4 py-3 text-right font-bold">Total Vendido</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sesiones.map((sesion) => (
-                            <tr key={sesion.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                <td className="px-4 py-4">
-                                    <div className="flex flex-col">
-                                        <span className="font-medium text-gray-900 dark:text-white">
-                                            {new Date(sesion.fechaApertura).toLocaleString()}
-                                        </span>
-                                        {sesion.fechaCierre && (
-                                            <span className="text-xs text-gray-400">
-                                                Cierre: {new Date(sesion.fechaCierre).toLocaleString()}
-                                            </span>
-                                        )}
-                                        <span className={`text-[10px] uppercase font-bold mt-1 max-w-fit px-2 py-0.5 rounded-full ${
-                                            sesion.estado === 'ABIERTA' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {sesion.estado}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-4">
-                                    <div className="flex flex-col">
-                                        <span className="font-medium">{sesion.caja}</span>
-                                        <span className="text-xs text-gray-400">{sesion.usuario}</span>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-4 text-right font-medium">Bs. {sesion.ventasEfectivo.toFixed(2)}</td>
-                                <td className="px-4 py-4 text-right font-medium">Bs. {sesion.ventasQR.toFixed(2)}</td>
-                                <td className="px-4 py-4 text-right">Bs. {sesion.ingresos.toFixed(2)}</td>
-                                <td className="px-4 py-4 text-right">Bs. {sesion.retiros.toFixed(2)}</td>
-                                <td className="px-4 py-4 text-right font-black text-gray-900 dark:text-white">
-                                    Bs. {sesion.totalVendido.toFixed(2)}
-                                </td>
-                            </tr>
-                        ))}
-                         {sesiones.length === 0 && (
+        <>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Historial de Movimientos de Caja</h3>
+                    <button 
+                        onClick={() => onExport(sesiones, 'Reporte_Caja')}
+                        className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">download</span>
+                        Exportar CSV
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
-                                <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
-                                    No hay movimientos de caja en este periodo.
-                                </td>
+                                <th className="px-4 py-3">Apertura / Cierre</th>
+                                <th className="px-4 py-3">Caja / Usuario</th>
+                                <th className="px-4 py-3 text-right text-emerald-600">Efectivo (Ventas)</th>
+                                <th className="px-4 py-3 text-right text-purple-600">QR (Ventas)</th>
+                                <th className="px-4 py-3 text-right text-blue-600">Ingresos</th>
+                                <th className="px-4 py-3 text-right text-red-600">Retiros</th>
+                                <th className="px-4 py-3 text-right font-bold">Total Vendido</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {sesiones.map((sesion) => (
+                                <tr key={sesion.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                    <td className="px-4 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-gray-900 dark:text-white">
+                                                {new Date(sesion.fechaApertura).toLocaleString()}
+                                            </span>
+                                            {sesion.fechaCierre && (
+                                                <span className="text-xs text-gray-400">
+                                                    Cierre: {new Date(sesion.fechaCierre).toLocaleString()}
+                                                </span>
+                                            )}
+                                            <span className={`text-[10px] uppercase font-bold mt-1 max-w-fit px-2 py-0.5 rounded-full ${
+                                                sesion.estado === 'ABIERTA' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {sesion.estado}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{sesion.caja}</span>
+                                            <span className="text-xs text-gray-400">{sesion.usuario}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-right font-medium">Bs. {sesion.ventasEfectivo.toFixed(2)}</td>
+                                    <td className="px-4 py-4 text-right font-medium">Bs. {sesion.ventasQR.toFixed(2)}</td>
+                                    <td className="px-4 py-4 text-right">
+                                        <button
+                                            onClick={() => handleClickMovimiento(sesion.id, 'ingreso')}
+                                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer"
+                                            disabled={sesion.ingresos === 0}
+                                        >
+                                            Bs. {sesion.ingresos.toFixed(2)}
+                                        </button>
+                                    </td>
+                                    <td className="px-4 py-4 text-right">
+                                        <button
+                                            onClick={() => handleClickMovimiento(sesion.id, 'retiro')}
+                                            className="text-red-600 hover:text-red-800 hover:underline font-medium cursor-pointer"
+                                            disabled={sesion.retiros === 0}
+                                        >
+                                            Bs. {sesion.retiros.toFixed(2)}
+                                        </button>
+                                    </td>
+                                    <td className="px-4 py-4 text-right font-black text-gray-900 dark:text-white">
+                                        Bs. {sesion.totalVendido.toFixed(2)}
+                                    </td>
+                                </tr>
+                            ))}
+                             {sesiones.length === 0 && (
+                                <tr>
+                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                                        No hay movimientos de caja en este periodo.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+
+            {/* Modal de Detalle de Movimientos */}
+            {showModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 no-print" onClick={() => setShowModal(false)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                    Detalle de {modalData.tipo === 'ingreso' ? 'Ingresos' : 'Retiros'}
+                                </h3>
+                                {modalData.sesion && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {modalData.sesion.caja} - {new Date(modalData.sesion.fechaApertura).toLocaleDateString()}
+                                    </p>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                <span className="material-symbols-outlined text-[28px]">close</span>
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+                            {loadingModal ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                                </div>
+                            ) : modalData.movimientos.length > 0 ? (
+                                <div className="space-y-3">
+                                    {modalData.movimientos.map((mov, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                                        >
+                                            <div className="flex-1">
+                                                <p className="font-medium text-gray-900 dark:text-white">
+                                                    {mov.motivo || 'Sin motivo especificado'}
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {new Date(mov.fecha).toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <div className={`text-lg font-bold ${
+                                                modalData.tipo === 'ingreso' 
+                                                    ? 'text-blue-600 dark:text-blue-400' 
+                                                    : 'text-red-600 dark:text-red-400'
+                                            }`}>
+                                                Bs. {parseFloat(mov.monto).toFixed(2)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    
+                                    {/* Total */}
+                                    <div className="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-gray-300 dark:border-gray-600 mt-4">
+                                        <span className="font-bold text-gray-900 dark:text-white">Total:</span>
+                                        <span className={`text-xl font-black ${
+                                            modalData.tipo === 'ingreso' 
+                                                ? 'text-blue-600 dark:text-blue-400' 
+                                                : 'text-red-600 dark:text-red-400'
+                                        }`}>
+                                            Bs. {modalData.movimientos.reduce((sum, mov) => sum + parseFloat(mov.monto), 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                                    <span className="material-symbols-outlined text-[64px] opacity-30">receipt_long</span>
+                                    <p className="mt-2">No hay {modalData.tipo === 'ingreso' ? 'ingresos' : 'retiros'} registrados</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

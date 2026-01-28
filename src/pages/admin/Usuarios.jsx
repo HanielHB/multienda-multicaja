@@ -17,14 +17,16 @@ export default function Usuarios() {
     const [editingId, setEditingId] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formData, setFormData] = useState({
-        nombres: '',
+        nombre: '',
+        apellido: '',
         email: '',
         password: '',
         nroDoc: '',
         telefono: '',
         tipo: 'cajero',
         sucursalId: '',
-        estado: true
+        estado: true,
+        permisos: []
     });
 
     // Check if we are creating or editing
@@ -126,27 +128,37 @@ export default function Usuarios() {
     const openModal = (usuario = null) => {
         if (usuario) {
             setEditingId(usuario.id);
+            // Split nombres into nombre and apellido if it exists
+            const nombres = usuario.nombres || '';
+            const parts = nombres.trim().split(' ');
+            const nombre = parts[0] || '';
+            const apellido = parts.slice(1).join(' ') || '';
+            
             setFormData({
-                nombres: usuario.nombres || '',
+                nombre: nombre,
+                apellido: apellido,
                 email: usuario.email || '',
                 password: '', // Password is usually not populated on edit
                 nroDoc: usuario.nroDoc || '',
                 telefono: usuario.telefono || '',
                 tipo: usuario.tipo || 'cajero',
                 sucursalId: usuario.sucursalId || '',
-                estado: usuario.estado ?? true
+                estado: usuario.estado ?? true,
+                permisos: usuario.permisos || []
             });
         } else {
             setEditingId(null);
             setFormData({
-                nombres: '',
+                nombre: '',
+                apellido: '',
                 email: '',
                 password: '',
                 nroDoc: '',
                 telefono: '',
                 tipo: 'cajero',
                 sucursalId: '',
-                estado: true
+                estado: true,
+                permisos: []
             });
         }
         setIsModalOpen(true);
@@ -156,14 +168,16 @@ export default function Usuarios() {
         setIsModalOpen(false);
         setEditingId(null);
         setFormData({
-            nombres: '',
+            nombre: '',
+            apellido: '',
             email: '',
             password: '',
             nroDoc: '',
             telefono: '',
             tipo: 'cajero',
             sucursalId: '',
-            estado: true
+            estado: true,
+            permisos: []
         });
     };
 
@@ -178,6 +192,11 @@ export default function Usuarios() {
 
             // Filter out empty password if editing
             const dataToSend = { ...formData };
+            // Combine nombre and apellido into nombres for backend
+            dataToSend.nombres = `${formData.nombre} ${formData.apellido}`.trim();
+            delete dataToSend.nombre;
+            delete dataToSend.apellido;
+            
             if (isEditing && !dataToSend.password) {
                 delete dataToSend.password;
             }
@@ -409,16 +428,30 @@ export default function Usuarios() {
 
                         <form onSubmit={handleSubmit} className="p-6 max-h-[80vh] overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Nombres */}
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Completo *</label>
+                                {/* Nombre */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre *</label>
                                     <input
                                         type="text"
-                                        name="nombres"
-                                        value={formData.nombres}
+                                        name="nombre"
+                                        value={formData.nombre}
                                         onChange={handleChange}
                                         className="w-full px-4 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
-                                        placeholder="Ej. Juan Pérez"
+                                        placeholder="Ej. Juan"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Apellido */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Apellido *</label>
+                                    <input
+                                        type="text"
+                                        name="apellido"
+                                        value={formData.apellido}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
+                                        placeholder="Ej. Pérez"
                                         required
                                     />
                                 </div>
@@ -510,6 +543,53 @@ export default function Usuarios() {
                                         className="w-full px-4 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
                                         placeholder="+591 70000000"
                                     />
+                                </div>
+
+                                {/* Permisos Section */}
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Permisos</label>
+                                    <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border-light dark:border-border-dark max-h-60 overflow-y-auto">
+                                        {[
+                                            { key: 'dashboard', label: 'Dashboard' },
+                                            { key: 'productos', label: 'Productos' },
+                                            { key: 'categorias', label: 'Categorías' },
+                                            { key: 'proveedores', label: 'Proveedores' },
+                                            { key: 'metodos_pago', label: 'Métodos de Pago' },
+                                            { key: 'clientes', label: 'Clientes' },
+                                            { key: 'sucursales', label: 'Sucursales' },
+                                            { key: 'usuarios', label: 'Usuarios' },
+                                            { key: 'almacenes', label: 'Almacenes' },
+                                            { key: 'inventario', label: 'Inventario' },
+                                            { key: 'apertura_cajas', label: 'Apertura Cajas' },
+                                            { key: 'punto_venta', label: 'Punto de Venta' },
+                                            { key: 'reportes', label: 'Reportes' }
+                                        ].map(permiso => (
+                                            <div key={permiso.key} className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`permiso-${permiso.key}`}
+                                                    checked={formData.permisos.includes(permiso.key)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                permisos: [...prev.permisos, permiso.key]
+                                                            }));
+                                                        } else {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                permisos: prev.permisos.filter(p => p !== permiso.key)
+                                                            }));
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                />
+                                                <label htmlFor={`permiso-${permiso.key}`} className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                    {permiso.label}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* Estado Checkbox */}

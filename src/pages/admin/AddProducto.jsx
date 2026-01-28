@@ -440,14 +440,17 @@ export default function AddProducto() {
                     {/* Talla */}
                     <div className="col-span-1">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Talla *</label>
-                        <input
+                        <select
                             name="talla"
                             value={formData.talla}
                             onChange={handleChange}
                             className={`w-full rounded-lg border ${fieldErrors.talla ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'} dark:bg-gray-800 dark:text-white px-3 py-2`}
-                            placeholder="Ej. 38, 39, 40, M, L, XL"
-                            type="text"
-                        />
+                        >
+                            <option value="">Seleccionar talla...</option>
+                            {Array.from({ length: 14 }, (_, i) => i + 30).map(size => (
+                                <option key={size} value={size}>{size}</option>
+                            ))}
+                        </select>
                         {fieldErrors.talla && (
                             <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>

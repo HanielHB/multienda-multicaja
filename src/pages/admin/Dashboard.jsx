@@ -6,6 +6,8 @@ const API_URL = '/api';
 export default function Dashboard() {
     const [activeFilter, setActiveFilter] = useState('todo');
     const [isLoading, setIsLoading] = useState(true);
+    const [sucursales, setSucursales] = useState([]);
+    const [selectedSucursal, setSelectedSucursal] = useState('all');
 
     // State for real data
     const [stats, setStats] = useState({
@@ -32,10 +34,15 @@ export default function Dashboard() {
         { id: 'porDia', label: 'Por Día' },
     ];
 
+    // Fetch branches on mount
+    useEffect(() => {
+        fetchSucursales();
+    }, []);
+
     // Fetch all dashboard data
     useEffect(() => {
         fetchDashboardData();
-    }, [activeFilter, currentPage]);
+    }, [activeFilter, currentPage, selectedSucursal]);
 
     const getFilterParams = () => {
         const now = new Date();
@@ -69,6 +76,21 @@ export default function Dashboard() {
         return { fechaInicio, fechaFin };
     };
 
+    const fetchSucursales = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/sucursales`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSucursales(data.data || data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching sucursales:', err);
+        }
+    };
+
     const fetchDashboardData = async () => {
         setIsLoading(true);
         const token = localStorage.getItem('token');
@@ -81,8 +103,16 @@ export default function Dashboard() {
         try {
             // Build query params
             let queryParams = '';
+            const params = [];
             if (fechaInicio) {
-                queryParams = `?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`;
+                params.push(`fechaInicio=${fechaInicio}`);
+                params.push(`fechaFin=${fechaFin}`);
+            }
+            if (selectedSucursal !== 'all') {
+                params.push(`sucursalId=${selectedSucursal}`);
+            }
+            if (params.length > 0) {
+                queryParams = `?${params.join('&')}`;
             }
 
             // Fetch ventas
@@ -315,10 +345,29 @@ export default function Dashboard() {
       `}</style>
 
             {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 page-animate">
-                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-                    Dashboard
-                </h1>
+            <div className="flex flex-col gap-4 page-animate">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                        Dashboard
+                    </h1>
+
+                    {/* Branch Selector */}
+                    <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sucursal:</label>
+                        <select
+                            value={selectedSucursal}
+                            onChange={(e) => setSelectedSucursal(e.target.value)}
+                            className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                        >
+                            <option value="all">Todas las Sucursales</option>
+                            {sucursales.map((sucursal) => (
+                                <option key={sucursal.id} value={sucursal.id}>
+                                    {sucursal.nombre}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
 
                 {/* Filter Tabs */}
                 <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 dark:bg-gray-800 rounded-xl">
