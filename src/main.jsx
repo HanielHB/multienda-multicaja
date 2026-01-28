@@ -6,6 +6,7 @@ import './index.css'; // Estilos globales
 
 // --- Importa tus Layouts ---
 import AdminLayout from './layouts/AdminLayout.jsx'; // Layout de ADMIN
+import ProtectedRoute from './components/ProtectedRoute.jsx'; // Componente de Ruta Protegida
 
 // --- Importa tus Páginas ---
 import Login from './pages/users/Login.jsx';
@@ -24,6 +25,7 @@ import Inventario from './pages/admin/Inventario.jsx';
 import AperturaCajas from './pages/admin/AperturaCajas.jsx';
 import PuntoVenta from './pages/admin/PuntoVenta.jsx';
 import Dashboard from './pages/admin/Dashboard.jsx';
+import Reportes from './pages/admin/Reportes.jsx';
 
 // Define las rutas
 const router = createBrowserRouter([
@@ -39,7 +41,11 @@ const router = createBrowserRouter([
   {
     // --- RUTAS DE ADMIN ---
     path: '/admin',
-    element: <AdminLayout />,
+    element: (
+      <ProtectedRoute>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -112,6 +118,10 @@ const router = createBrowserRouter([
       {
         path: 'punto-venta',
         element: <PuntoVenta />
+      },
+      {
+        path: 'reportes',
+        element: <Reportes />
       },
     ]
   }

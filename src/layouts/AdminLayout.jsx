@@ -1,11 +1,21 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 export default function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Check if current path matches
+  // Check if current path matches
   const isActive = (path) => location.pathname === path;
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    // Limpiar otros datos de sesion si existen, ej: cajaId
+    localStorage.removeItem('sesionCajaId'); 
+    navigate('/');
+  };
 
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-dark-charcoal dark:text-background-light">
@@ -228,17 +238,33 @@ export default function AdminLayout() {
                   Punto de Venta
                 </p>
               </Link>
+              <Link
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/reportes') || location.pathname.startsWith('/admin/reportes')
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-neutral-gray hover:bg-primary/10 hover:text-primary'
+                  }`}
+                to="/admin/reportes"
+              >
+                <span
+                  className="material-symbols-outlined text-2xl"
+                  style={isActive('/admin/reportes') || location.pathname.startsWith('/admin/reportes') ? { fontVariationSettings: "'FILL' 1" } : {}}
+                >
+                  bar_chart
+                </span>
+                <p className={`text-sm leading-normal ${isActive('/admin/reportes') || location.pathname.startsWith('/admin/reportes') ? 'font-bold' : 'font-medium'}`}>
+                  Reportes
+                </p>
+              </Link>
             </nav>
           </div>
           <div className="flex flex-col gap-1">
-            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-gray hover:bg-primary/10 hover:text-primary" to="#">
-              <span className="material-symbols-outlined text-2xl">help_outline</span>
-              <p className="text-sm font-medium leading-normal">Ayuda</p>
-            </Link>
-            <Link className="flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-gray hover:bg-primary/10 hover:text-primary" to="/">
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-gray hover:bg-primary/10 hover:text-primary w-full text-left"
+            >
               <span className="material-symbols-outlined text-2xl">logout</span>
               <p className="text-sm font-medium leading-normal">Cerrar Sesión</p>
-            </Link>
+            </button>
           </div>
         </aside>
 

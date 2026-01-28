@@ -283,7 +283,11 @@ export default function PuntoVenta() {
     const handlePaymentSelect = (methodId) => {
         setSelectedPayment(methodId);
         setShowPaymentModal(true);
-        setMontoEfectivo('');
+        if (methodId === 'qr') {
+            setMontoEfectivo(total.toString());
+        } else {
+            setMontoEfectivo('');
+        }
     };
 
     // Handle complete payment
@@ -356,7 +360,11 @@ export default function PuntoVenta() {
                 setShowPaymentModal(false);
                 setShowVentaExitosaModal(true);
                 // Actualizar saldo de caja con el total de la venta
-                setSaldoCaja(prev => prev + total);
+                // Actualizar saldo de caja con el total de la venta (Solo si es EFECTIVO)
+                if (selectedPayment === 'efectivo') {
+                    setSaldoCaja(prev => prev + total);
+                }
+                fetchProductos(); // Actualizar stock de productos
                 setCart([]);
                 setMontoEfectivo('');
                 setSelectedCliente(null);
