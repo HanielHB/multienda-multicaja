@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const API_URL = '/api';
 
@@ -12,6 +13,14 @@ export default function AddProducto() {
     const [loadingData, setLoadingData] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState({});
+
+    // Ref for barcode input
+    const codigoBarrasRef = useRef(null);
+    
+    // State for camera scanner
+    const [showScannerModal, setShowScannerModal] = useState(false);
+    const [scanning, setScanning] = useState(false);
+    const scannerRef = useRef(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -228,6 +237,78 @@ export default function AddProducto() {
             codigoInterno: `ZAP-${random}`
         }));
     };
+
+    // Función para activar el scanner de cámara
+    const handleScannerClick = () => {
+        setShowScannerModal(true);
+    };
+
+    // Iniciar escáner de cámara
+    const startScanner = async () => {
+        try {
+            setScanning(true);
+            const html5QrCode = new Html5Qrcode("barcode-reader");
+            scannerRef.current = html5QrCode;
+
+            await html5QrCode.start(
+                { facingMode: "environment" }, // Usar cámara trasera en móviles
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    formatsToSupport: [
+                        0,  // CODE_128
+                        1,  // CODE_39
+                        13, // EAN_13
+                        14, // EAN_8
+                        15, // UPC_A
+                        16  // UPC_E
+                    ]
+                },
+                (decodedText) => {
+                    // Código detectado exitosamente
+                    setFormData(prev => ({
+                        ...prev,
+                        codigoBarras: decodedText
+                    }));
+                    stopScanner();
+                },
+                (errorMessage) => {
+                    // Error de escaneo (normal cuando no detecta nada)
+                }
+            );
+        } catch (err) {
+            console.error("Error al iniciar escáner:", err);
+            setError("No se pudo acceder a la cámara. Por favor verifica los permisos.");
+            setShowScannerModal(false);
+            setScanning(false);
+        }
+    };
+
+    // Detener escáner de cámara
+    const stopScanner = async () => {
+        if (scannerRef.current) {
+            try {
+                await scannerRef.current.stop();
+                scannerRef.current.clear();
+            } catch (err) {
+                console.error("Error al detener escáner:", err);
+            }
+        }
+        setShowScannerModal(false);
+        setScanning(false);
+    };
+
+    // Iniciar escáner cuando se abre el modal
+    useEffect(() => {
+        if (showScannerModal) {
+            startScanner();
+        }
+        return () => {
+            if (scannerRef.current && scanning) {
+                stopScanner();
+            }
+        };
+    }, [showScannerModal]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -529,6 +610,7 @@ export default function AddProducto() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código de Barras *</label>
                         <div className="flex gap-2">
                             <input
+                                ref={codigoBarrasRef}
                                 name="codigoBarras"
                                 value={formData.codigoBarras}
                                 onChange={handleChange}
@@ -536,7 +618,12 @@ export default function AddProducto() {
                                 placeholder="Escaneé o ingrese código"
                                 type="text"
                             />
-                            <button type="button" className="p-2 text-neutral-gray hover:text-gray-700 dark:hover:text-gray-300 border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <button 
+                                type="button" 
+                                onClick={handleScannerClick}
+                                className="p-2 text-primary hover:text-primary/80 border border-primary dark:border-primary rounded-lg hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"
+                                title="Activar escáner de código de barras"
+                            >
                                 <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
                             </button>
                         </div>
@@ -657,6 +744,38 @@ export default function AddProducto() {
                     </div>
                 </div>
             </form>
+
+            {/* Scanner Modal */}
+            {showScannerModal && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-primary to-blue-600 p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-white">
+                                <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
+                                <h3 className="font-bold text-lg">Escanear Código de Barras</h3>
+                            </div>
+                            <button
+                                onClick={stopScanner}
+                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        {/* Scanner Area */}
+                        <div className="p-4">
+                            <div 
+                                id="barcode-reader" 
+                                className="rounded-lg overflow-hidden border-4 border-primary/20"
+                            ></div>
+                            <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-3">
+                                Coloca el código de barras frente a la cámara
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

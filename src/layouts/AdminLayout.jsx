@@ -12,10 +12,21 @@ export default function AdminLayout() {
   // Obtener usuario del almacenamiento local
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  // Estado para el modal de confirmación de cierre de sesión
+  const [showLogoutModal, setShowLogoutModal] = React.useState(false);
+  const [hasCajaAbierta, setHasCajaAbierta] = React.useState(false);
+
   const handleLogout = () => {
+    // Verificar si hay una caja abierta
+    const cajaActiva = localStorage.getItem('cajaActiva');
+    setHasCajaAbierta(!!cajaActiva);
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    // Limpiar otros datos de sesion si existen, ej: cajaId
+    localStorage.removeItem('cajaActiva');
     localStorage.removeItem('sesionCajaId'); 
     navigate('/');
   };
@@ -310,6 +321,75 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Modal de confirmación de cierre de sesión */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowLogoutModal(false)}
+          />
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-md w-full animate-[scaleIn_0.2s_ease-out]">
+            <div className="flex flex-col items-center text-center">
+              {/* Icon */}
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                hasCajaAbierta 
+                  ? 'bg-amber-100 dark:bg-amber-900/30' 
+                  : 'bg-blue-100 dark:bg-blue-900/30'
+              }`}>
+                <span className={`material-symbols-outlined text-3xl ${
+                  hasCajaAbierta 
+                    ? 'text-amber-500' 
+                    : 'text-blue-500'
+                }`}>
+                  {hasCajaAbierta ? 'warning' : 'logout'}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                {hasCajaAbierta ? '¡Atención!' : 'Cerrar Sesión'}
+              </h3>
+
+              {/* Message */}
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                {hasCajaAbierta ? (
+                  <>
+                    <span className="block font-semibold text-amber-600 dark:text-amber-500 mb-2">
+                      Tienes una caja aperturada
+                    </span>
+                    <span className="block text-sm">
+                      Se recomienda cerrar la caja antes de cerrar sesión. ¿Estás seguro de que deseas cerrar sesión de todas formas?
+                    </span>
+                  </>
+                ) : (
+                  '¿Estás seguro de que deseas cerrar sesión?'
+                )}
+              </p>
+
+              {/* Buttons */}
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 py-3 px-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold text-white transition-all ${
+                    hasCajaAbierta
+                      ? 'bg-amber-500 hover:bg-amber-600'
+                      : 'bg-red-500 hover:bg-red-600'
+                  }`}
+                >
+                  Cerrar Sesión
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const API_URL = '/api';
 
@@ -8,6 +9,7 @@ export default function PuntoVenta() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [searchCode, setSearchCode] = useState('');
     const [searchProduct, setSearchProduct] = useState('');
+    const [barcodeTimeout, setBarcodeTimeout] = useState(null);
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showIngresoModal, setShowIngresoModal] = useState(false);
@@ -52,6 +54,11 @@ export default function PuntoVenta() {
     const [saldoCaja, setSaldoCaja] = useState(0);
     const [loading, setLoading] = useState(true);
 
+    // State for camera scanner
+    const [showScannerModal, setShowScannerModal] = useState(false);
+    const [scanning, setScanning] = useState(false);
+    const scannerRef = useRef(null);
+
     // Fetch products, clientes and caja info on mount
     useEffect(() => {
         fetchProductos();
@@ -93,6 +100,8 @@ export default function PuntoVenta() {
                     stock: parseInt(p.stockActual) || parseInt(p.stock) || 0,
                     imagen: p.imagen,
                     talla: p.talla,
+                    codigoBarras: p.codigoBarras,
+                    codigoInterno: p.codigoInterno,
                     icon: getProductIcon(p.categoriaId),
                     color: getProductColor(p.categoriaId)
                 }));
@@ -243,6 +252,39 @@ export default function PuntoVenta() {
         setRestante(0);
     };
 
+    // Manejar escaneo de código de barras
+    const handleBarcodeInput = (e) => {
+        const code = e.target.value;
+        setSearchCode(code);
+
+        // Limpiar timeout anterior si existe
+        if (barcodeTimeout) {
+            clearTimeout(barcodeTimeout);
+        }
+    };
+
+    // Manejar cuando se presiona Enter en el input de código
+    const handleBarcodeKeyDown = (e) => {
+        if (e.key === 'Enter' && searchCode.trim().length > 0) {
+            e.preventDefault();
+            
+            const product = productos.find(p => 
+                p.codigoBarras === searchCode.trim() || 
+                p.codigoInterno === searchCode.trim()
+            );
+
+            if (product) {
+                addToCart(product);
+                setSearchCode(''); // Limpiar el input después de agregar
+            } else {
+                // Si no encuentra el producto, mostrar alerta
+                setStockAlertMessage(`No se encontró un producto con el código: "${searchCode}"`);
+                setShowStockModal(true);
+                setSearchCode('');
+            }
+        }
+    };
+
     const handleCerrarCaja = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -277,6 +319,83 @@ export default function PuntoVenta() {
             alert('Error al cerrar la caja');
         }
     };
+
+    // Iniciar escáner de cámara
+    const startScanner = async () => {
+        try {
+            setScanning(true);
+            const html5QrCode = new Html5Qrcode("barcode-reader-pos");
+            scannerRef.current = html5QrCode;
+
+            await html5QrCode.start(
+                { facingMode: "environment" }, // Usar cámara trasera en móviles
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    formatsToSupport: [
+                        0,  // CODE_128
+                        1,  // CODE_39
+                        13, // EAN_13
+                        14, // EAN_8
+                        15, // UPC_A
+                        16  // UPC_E
+                    ]
+                },
+                (decodedText) => {
+                    // Código detectado exitosamente - buscar producto y agregarlo
+                    const product = productos.find(p => 
+                        p.codigoBarras === decodedText || 
+                        p.codigoInterno === decodedText
+                    );
+
+                    if (product) {
+                        addToCart(product);
+                        stopScanner();
+                    } else {
+                        // Si no encuentra el producto, mostrar alerta
+                        setStockAlertMessage(`No se encontró un producto con el código: "${decodedText}"`);
+                        setShowStockModal(true);
+                        stopScanner();
+                    }
+                },
+                (errorMessage) => {
+                    // Error de escaneo (normal cuando no detecta nada)
+                }
+            );
+        } catch (err) {
+            console.error("Error al iniciar escáner:", err);
+            setStockAlertMessage("No se pudo acceder a la cámara. Por favor verifica los permisos.");
+            setShowStockModal(true);
+            setShowScannerModal(false);
+            setScanning(false);
+        }
+    };
+
+    // Detener escáner de cámara
+    const stopScanner = async () => {
+        if (scannerRef.current) {
+            try {
+                await scannerRef.current.stop();
+                scannerRef.current.clear();
+            } catch (err) {
+                console.error("Error al detener escáner:", err);
+            }
+        }
+        setShowScannerModal(false);
+        setScanning(false);
+    };
+
+    // Iniciar escáner cuando se abre el modal
+    useEffect(() => {
+        if (showScannerModal) {
+            startScanner();
+        }
+        return () => {
+            if (scannerRef.current && scanning) {
+                stopScanner();
+            }
+        };
+    }, [showScannerModal]);
 
     const paymentMethods = [
         { id: 'qr', label: 'Qr', icon: 'credit_score', color: 'bg-purple-500' },
@@ -372,6 +491,8 @@ export default function PuntoVenta() {
                 setCart([]);
                 setMontoEfectivo('');
                 setSelectedCliente(null);
+                setClienteNombre('');
+                setSearchCliente('');
                 // Incrementar número de factura (simple)
                 const numParts = numeroFactura.split('-');
                 const nextNum = parseInt(numParts[1] || 0) + 1;
@@ -504,17 +625,27 @@ export default function PuntoVenta() {
                             <input
                                 type="text"
                                 value={searchCode}
-                                onChange={(e) => setSearchCode(e.target.value)}
-                                className="input-focus w-16 px-3 py-2.5 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
-                                placeholder="Cod"
+                                onChange={handleBarcodeInput}
+                                onKeyDown={handleBarcodeKeyDown}
+                                className="input-focus w-14 px-2.5 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
+                                placeholder="Cód"
+                                autoFocus
                             />
                             <input
                                 type="text"
                                 value={searchProduct}
                                 onChange={(e) => setSearchProduct(e.target.value)}
-                                className="input-focus flex-1 px-4 py-2.5 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
+                                className="input-focus flex-1 px-2 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
                                 placeholder="Buscar producto..."
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowScannerModal(true)}
+                                className="p-2 text-white bg-primary hover:bg-primary/90 border border-primary rounded-lg transition-colors flex items-center justify-center"
+                                title="Escanear código de barras con cámara"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
+                            </button>
                         </div>
 
                         {/* Search Results Dropdown - Solo aparece al escribir */}
@@ -730,8 +861,9 @@ export default function PuntoVenta() {
                     </div>
                 </aside>
 
-                {/* Payment Modal Overlay */}
-                {showPaymentModal && (
+                {/* Payment Modal */}
+            {
+                showPaymentModal && !showCerrarCajaModal && (
                     <div className="absolute inset-0 z-50 flex items-stretch">
                         {/* Backdrop */}
                         <div
@@ -802,17 +934,28 @@ export default function PuntoVenta() {
                                             onChange={(e) => {
                                                 setSearchCliente(e.target.value);
                                                 setSelectedCliente(null);
+                                                setClienteNombre('');
                                                 setShowClienteDropdown(true);
                                             }}
                                             onFocus={() => setShowClienteDropdown(true)}
+                                            onBlur={() => {
+                                                // Si escribió algo pero no seleccionó un cliente, usar como nombre invitado
+                                                setTimeout(() => {
+                                                    if (!selectedCliente && searchCliente.trim()) {
+                                                        setClienteNombre(searchCliente.trim());
+                                                    }
+                                                    setShowClienteDropdown(false);
+                                                }, 200);
+                                            }}
                                             className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-center font-medium"
-                                            placeholder="Buscar cliente..."
+                                            placeholder="Buscar o escribir nombre del cliente..."
                                         />
-                                        {selectedCliente && (
+                                        {(selectedCliente || searchCliente) && (
                                             <button
                                                 onClick={() => {
                                                     setSelectedCliente(null);
                                                     setSearchCliente('');
+                                                    setClienteNombre('');
                                                 }}
                                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
                                             >
@@ -852,14 +995,32 @@ export default function PuntoVenta() {
                                                     </button>
                                                 ))
                                             }
-                                            {clientes.filter(c =>
+                                            
+                                            {/* Opción para usar como cliente invitado cuando no hay resultados */}
+                                            {searchCliente.trim() && clientes.filter(c =>
                                                 !searchCliente ||
-                                                c.nombre?.toLowerCase().includes(searchCliente.toLowerCase())
+                                                c.nombre?.toLowerCase().includes(searchCliente.toLowerCase()) ||
+                                                c.telefono?.includes(searchCliente) ||
+                                                c.nit?.includes(searchCliente)
                                             ).length === 0 && (
-                                                    <div className="p-3 text-center text-gray-500 text-sm">
-                                                        No se encontraron clientes
+                                                <button
+                                                    onClick={() => {
+                                                        setClienteNombre(searchCliente.trim());
+                                                        setShowClienteDropdown(false);
+                                                    }}
+                                                    className="w-full px-4 py-3 text-left bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-t border-blue-200 dark:border-blue-800 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="material-symbols-outlined text-blue-500">person_add</span>
+                                                        <div>
+                                                            <div className="font-medium text-blue-600 dark:text-blue-400">
+                                                                Usar "{searchCliente}" como cliente
+                                                            </div>
+                                                            <div className="text-xs text-blue-500 dark:text-blue-400">No se guardará en la base de datos</div>
+                                                        </div>
                                                     </div>
-                                                )}
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1813,6 +1974,41 @@ export default function PuntoVenta() {
                     </div>
                 )
             }
+
+            {/* Scanner Modal */}
+            {showScannerModal && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-primary to-blue-600 p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-white">
+                                <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
+                                <h3 className="font-bold text-lg">Escanear Código de Barras</h3>
+                            </div>
+                            <button
+                                onClick={stopScanner}
+                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        {/* Scanner Area */}
+                        <div className="p-4">
+                            <div 
+                                id="barcode-reader-pos" 
+                                className="rounded-lg overflow-hidden border-4 border-primary/20"
+                            ></div>
+                            <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-3">
+                                Coloca el código de barras frente a la cámara
+                            </p>
+                            <p className="text-center text-xs text-primary mt-1 font-medium">
+                                El producto se agregará automáticamente al carrito
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

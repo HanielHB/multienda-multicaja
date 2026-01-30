@@ -227,21 +227,36 @@ export default function Productos() {
                      getStockStatusValue(producto) === 'low_stock' ? 'Bajo Stock' : 'Agotado'
         }));
 
-        // Crear CSV
+        // Crear CSV con punto y coma (;) como delimitador para Excel
         const headers = Object.keys(dataToExport[0] || {});
-        const csvContent = [
-            headers.join(','),
-            ...dataToExport.map(row => 
-                headers.map(header => `"${row[header]}"`).join(',')
-            )
-        ].join('\n');
+        const csvRows = [];
+        
+        // Agregar encabezados
+        csvRows.push(headers.join(';'));
+        
+        // Agregar datos - escapar campos con comillas si contienen caracteres especiales
+        dataToExport.forEach(row => {
+            const values = headers.map(header => {
+                const value = String(row[header] || '');
+                // Escapar valores que contengan punto y coma, comillas o saltos de línea
+                if (value.includes(';') || value.includes('"') || value.includes('\n')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            csvRows.push(values.join(';'));
+        });
 
-        // Descargar archivo
+        const csvContent = csvRows.join('\n');
+
+        // Descargar archivo con BOM UTF-8 para compatibilidad con Excel
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `productos_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         setShowExportMenu(false);
     };
 

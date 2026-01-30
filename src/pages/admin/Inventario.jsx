@@ -36,6 +36,9 @@ export default function Inventario() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    // Estado para el menú de exportación
+    const [showExportMenu, setShowExportMenu] = useState(false);
+
     useEffect(() => {
         fetchInitialData();
     }, []);
@@ -323,6 +326,116 @@ export default function Inventario() {
         return almacenes.filter(a => a.id.toString() !== formData.almacenId);
     };
 
+    // Función para exportar a Excel (CSV)
+    const exportToExcel = () => {
+        const dataToExport = filteredMovimientos.map(mov => ({
+            'Fecha': formatDate(mov.createdAt),
+            'Sucursal': mov.almacen?.sucursal?.nombre || 'N/A',
+            'Almacén': mov.almacen?.nombre || 'N/A',
+            'Movimiento': getMovementTypeDisplay(mov.motivo),
+            'Producto': mov.producto?.nombre || 'N/A',
+            'Tipo': mov.tipo === 'ENTRADA' ? 'Ingreso' : 'Egreso',
+            'Cantidad': mov.cantidad
+        }));
+
+        // Crear CSV con punto y coma (;) como delimitador para Excel
+        const headers = Object.keys(dataToExport[0] || {});
+        const csvRows = [];
+        
+        // Agregar encabezados
+        csvRows.push(headers.join(';'));
+        
+        // Agregar datos - escapar campos con comillas si contienen caracteres especiales
+        dataToExport.forEach(row => {
+            const values = headers.map(header => {
+                const value = String(row[header] || '');
+                // Escapar valores que contengan punto y coma, comillas o saltos de línea
+                if (value.includes(';') || value.includes('"') || value.includes('\n')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            csvRows.push(values.join(';'));
+        });
+
+        const csvContent = csvRows.join('\n');
+
+        // Descargar archivo con BOM UTF-8 para compatibilidad con Excel
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `inventario_movimientos_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setShowExportMenu(false);
+    };
+
+    // Función para exportar a PDF
+    const exportToPDF = () => {
+        const printWindow = window.open('', '_blank');
+        const tableRows = filteredMovimientos.map(mov => `
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-size: 12px;">${formatDate(mov.createdAt)}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${mov.almacen?.sucursal?.nombre || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${mov.almacen?.nombre || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${getMovementTypeDisplay(mov.motivo)}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${mov.producto?.nombre || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                    <span style="background: ${mov.tipo === 'ENTRADA' ? '#d1fae5' : '#fed7aa'}; color: ${mov.tipo === 'ENTRADA' ? '#065f46' : '#92400e'}; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                        ${mov.tipo === 'ENTRADA' ? 'Ingreso' : 'Egreso'}
+                    </span>
+                </td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: ${mov.tipo === 'ENTRADA' ? '#059669' : '#dc2626'};">
+                    ${mov.tipo === 'ENTRADA' ? '+' : '-'}${mov.cantidad}
+                </td>
+            </tr>
+        `).join('');
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Movimientos de Inventario - SisPOS</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    h1 { color: #333; margin-bottom: 5px; }
+                    .date { color: #666; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                    th { background-color: #4F46E5; color: white; padding: 10px; text-align: left; font-size: 12px; }
+                    tr:nth-child(even) { background-color: #f9f9f9; }
+                    .footer { margin-top: 20px; text-align: center; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <h1>Movimientos de Inventario</h1>
+                <p class="date">Generado el: ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                ${fechaInicio || fechaFin ? `<p class="date">Período: ${fechaInicio || 'Inicio'} - ${fechaFin || 'Hoy'}</p>` : ''}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Sucursal</th>
+                            <th>Almacén</th>
+                            <th>Movimiento</th>
+                            <th>Producto</th>
+                            <th style="text-align: center;">Tipo</th>
+                            <th style="text-align: center;">Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+                <p class="footer">Total de movimientos: ${filteredMovimientos.length}</p>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+        setShowExportMenu(false);
+    };
+
     return (
         <div className="flex flex-col gap-6">
             {/* Header Section */}
@@ -331,6 +444,36 @@ export default function Inventario() {
                     <h1 className="text-gray-900 dark:text-white text-3xl font-black leading-tight tracking-[-0.033em]">Inventario</h1>
                 </div>
                 <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <button 
+                            onClick={() => setShowExportMenu(!showExportMenu)}
+                            className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">download</span> Exportar
+                            <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                        </button>
+                        {showExportMenu && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setShowExportMenu(false)}></div>
+                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-border-light dark:border-border-dark z-20 overflow-hidden">
+                                    <button
+                                        onClick={exportToExcel}
+                                        className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px] text-green-600">table_view</span>
+                                        Exportar a Excel
+                                    </button>
+                                    <button
+                                        onClick={exportToPDF}
+                                        className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors border-t border-border-light dark:border-border-dark"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px] text-red-600">picture_as_pdf</span>
+                                        Exportar a PDF
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                     <button
                         onClick={openModal}
                         className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-all duration-300 shadow-md shadow-primary/20 hover:shadow-primary/40"

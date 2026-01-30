@@ -53,16 +53,34 @@ export default function Reportes() {
         if (!data || !data.length) return alert('No hay datos para exportar');
         
         const headers = Object.keys(data[0]);
-        const csvContent = [
-            headers.join(','),
-            ...data.map(row => headers.map(header => JSON.stringify(row[header])).join(','))
-        ].join('\n');
+        const csvRows = [];
+        
+        // Agregar encabezados
+        csvRows.push(headers.join(';'));
+        
+        // Agregar datos - escapar campos con comillas si contienen caracteres especiales
+        data.forEach(row => {
+            const values = headers.map(header => {
+                const value = String(row[header] != null ? row[header] : '');
+                // Escapar valores que contengan punto y coma, comillas o saltos de línea
+                if (value.includes(';') || value.includes('"') || value.includes('\n')) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            csvRows.push(values.join(';'));
+        });
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const csvContent = csvRows.join('\n');
+
+        // Descargar archivo con BOM UTF-8 para compatibilidad con Excel
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `${filename}_${startDate}_${endDate}.csv`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -632,7 +650,7 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport }) {
 
             {/* Análisis de Tallas */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Análisis de Tallas (Heatmap)</h3>
+                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Análisis de Tallas</h3>
                 <p className="text-sm text-gray-500 mb-6">Ranking de tallas con mayor volumen de venta.</p>
                 <div className="h-64 flex items-center justify-center">
                     {analisisTallas.length > 0
