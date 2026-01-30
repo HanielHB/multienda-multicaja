@@ -49,79 +49,79 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Dashboard />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Dashboard /></ProtectedRoute>
       },
       {
         path: 'dashboard',
-        element: <Dashboard />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Dashboard /></ProtectedRoute>
       },
       {
         path: 'productos',
-        element: <Productos />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Productos /></ProtectedRoute>
       },
       {
         path: 'productos/add',
-        element: <AddProducto />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><AddProducto /></ProtectedRoute>
       },
       {
         path: 'productos/edit/:id',
-        element: <AddProducto />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><AddProducto /></ProtectedRoute>
       },
       {
         path: 'categorias',
-        element: <Categorias />
+        element: <ProtectedRoute allowedRoles={['administrador']}><Categorias /></ProtectedRoute>
       },
       {
         path: 'categorias/add',
-        element: <AddCategoria />
+        element: <ProtectedRoute allowedRoles={['administrador']}><AddCategoria /></ProtectedRoute>
       },
       {
         path: 'categorias/edit/:id',
-        element: <AddCategoria />
+        element: <ProtectedRoute allowedRoles={['administrador']}><AddCategoria /></ProtectedRoute>
       },
       {
         path: 'proveedores',
-        element: <Proveedores />
+        element: <ProtectedRoute allowedRoles={['administrador']}><Proveedores /></ProtectedRoute>
       },
       {
         path: 'proveedores/add',
-        element: <AddProveedor />
+        element: <ProtectedRoute allowedRoles={['administrador']}><AddProveedor /></ProtectedRoute>
       },
       {
         path: 'metodos-pago',
-        element: <MetodosPago />
+        element: <ProtectedRoute allowedRoles={['administrador']}><MetodosPago /></ProtectedRoute>
       },
       {
         path: 'clientes',
-        element: <Clientes />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Clientes /></ProtectedRoute>
       },
       {
         path: 'sucursales',
-        element: <Sucursales />
+        element: <ProtectedRoute allowedRoles={['administrador']}><Sucursales /></ProtectedRoute>
       },
       {
         path: 'usuarios',
-        element: <Usuarios />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Usuarios /></ProtectedRoute>
       },
       {
         path: 'almacenes',
-        element: <Almacenes />
+        element: <ProtectedRoute allowedRoles={['administrador']}><Almacenes /></ProtectedRoute>
       },
       {
         path: 'inventario',
-        element: <Inventario />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Inventario /></ProtectedRoute>
       },
       {
         path: 'apertura-cajas',
-        element: <AperturaCajas />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'cajero']}><AperturaCajas /></ProtectedRoute>
       },
       {
         path: 'punto-venta',
-        element: <PuntoVenta />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'cajero']}><PuntoVenta /></ProtectedRoute>
       },
       {
         path: 'reportes',
-        element: <Reportes />
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Reportes /></ProtectedRoute>
       },
     ]
   }

@@ -9,6 +9,9 @@ export default function AdminLayout() {
   // Check if current path matches
   const isActive = (path) => location.pathname === path;
 
+  // Obtener usuario del almacenamiento local
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -30,12 +33,16 @@ export default function AdminLayout() {
               </div>
               <div className="flex flex-col">
                 <h1 className="text-dark-charcoal dark:text-white text-base font-bold leading-normal">Zapatería Telléz</h1>
-                <p className="text-neutral-gray text-sm font-normal leading-normal">Panel Admin</p>
+                <p className="text-neutral-gray text-sm font-normal leading-normal capitalize">
+                  Panel {user.tipo ? user.tipo : 'Usuario'}
+                </p>
               </div>
             </div>
             <nav className="flex flex-col gap-2">
+              {/* Dashboard: Admin y Supervisor */}
+              {['administrador', 'supervisor'].includes(user?.tipo) && (
               <Link
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin') && location.pathname === '/admin' || isActive('/admin/dashboard')
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/dashboard')
                   ? 'bg-primary/10 text-primary'
                   : 'text-neutral-gray hover:bg-primary/10 hover:text-primary'
                   }`}
@@ -43,14 +50,18 @@ export default function AdminLayout() {
               >
                 <span
                   className="material-symbols-outlined text-2xl"
-                  style={isActive('/admin') && location.pathname === '/admin' || isActive('/admin/dashboard') ? { fontVariationSettings: "'FILL' 1" } : {}}
+                  style={isActive('/admin/dashboard') ? { fontVariationSettings: "'FILL' 1" } : {}}
                 >
                   dashboard
                 </span>
-                <p className={`text-sm leading-normal ${isActive('/admin') && location.pathname === '/admin' || isActive('/admin/dashboard') ? 'font-bold' : 'font-medium'}`}>
+                <p className={`text-sm leading-normal ${isActive('/admin/dashboard') ? 'font-bold' : 'font-medium'}`}>
                   Dashboard
                 </p>
               </Link>
+              )}
+
+              {/* Productos: Admin y Supervisor */}
+              {['administrador', 'supervisor'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/productos') || location.pathname.startsWith('/admin/productos')
                   ? 'bg-primary/10 text-primary'
@@ -68,6 +79,10 @@ export default function AdminLayout() {
                   Productos
                 </p>
               </Link>
+              )}
+
+              {/* Categorías: Solo Admin */}
+              {['administrador'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/categorias') || location.pathname.startsWith('/admin/categorias')
                   ? 'bg-primary/10 text-primary'
@@ -85,6 +100,10 @@ export default function AdminLayout() {
                   Categorías
                 </p>
               </Link>
+              )}
+
+              {/* Proveedores: Solo Admin */}
+              {['administrador'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/proveedores') || location.pathname.startsWith('/admin/proveedores')
                   ? 'bg-primary/10 text-primary'
@@ -102,23 +121,12 @@ export default function AdminLayout() {
                   Proveedores
                 </p>
               </Link>
-              <Link
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/metodos-pago') || location.pathname.startsWith('/admin/metodos-pago')
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-neutral-gray hover:bg-primary/10 hover:text-primary'
-                  }`}
-                to="/admin/metodos-pago"
-              >
-                <span
-                  className="material-symbols-outlined text-2xl"
-                  style={isActive('/admin/metodos-pago') || location.pathname.startsWith('/admin/metodos-pago') ? { fontVariationSettings: "'FILL' 1" } : {}}
-                >
-                  payments
-                </span>
-                <p className={`text-sm leading-normal ${isActive('/admin/metodos-pago') || location.pathname.startsWith('/admin/metodos-pago') ? 'font-bold' : 'font-medium'}`}>
-                  Métodos de Pago
-                </p>
-              </Link>
+              )}
+
+
+
+              {/* Clientes: Admin y Supervisor */}
+              {['administrador', 'supervisor'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/clientes') || location.pathname.startsWith('/admin/clientes')
                   ? 'bg-primary/10 text-primary'
@@ -136,6 +144,10 @@ export default function AdminLayout() {
                   Clientes
                 </p>
               </Link>
+              )}
+
+              {/* Sucursales: Solo Admin */}
+              {['administrador'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/sucursales') || location.pathname.startsWith('/admin/sucursales')
                   ? 'bg-primary/10 text-primary'
@@ -153,6 +165,10 @@ export default function AdminLayout() {
                   Sucursales
                 </p>
               </Link>
+              )}
+
+              {/* Usuarios: Admin y Supervisor */}
+              {['administrador', 'supervisor'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/usuarios') || location.pathname.startsWith('/admin/usuarios')
                   ? 'bg-primary/10 text-primary'
@@ -170,6 +186,10 @@ export default function AdminLayout() {
                   Usuarios
                 </p>
               </Link>
+              )}
+
+              {/* Almacenes: Solo Admin (o Supervisor View?) - Plan dice Admin only */}
+              {['administrador'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/almacenes') || location.pathname.startsWith('/admin/almacenes')
                   ? 'bg-primary/10 text-primary'
@@ -187,6 +207,10 @@ export default function AdminLayout() {
                   Almacenes
                 </p>
               </Link>
+              )}
+
+              {/* Inventario: Admin y Supervisor */}
+              {['administrador', 'supervisor'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/inventario') || location.pathname.startsWith('/admin/inventario')
                   ? 'bg-primary/10 text-primary'
@@ -204,6 +228,10 @@ export default function AdminLayout() {
                   Inventario
                 </p>
               </Link>
+              )}
+
+              {/* Apertura Cajas: Admin, Supervisor, Cajero */}
+              {['administrador', 'supervisor', 'cajero'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/apertura-cajas') || location.pathname.startsWith('/admin/apertura-cajas')
                   ? 'bg-primary/10 text-primary'
@@ -221,6 +249,10 @@ export default function AdminLayout() {
                   Apertura Cajas
                 </p>
               </Link>
+              )}
+
+              {/* Punto de Venta: Admin, Supervisor, Cajero */}
+              {['administrador', 'supervisor', 'cajero'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/punto-venta') || location.pathname.startsWith('/admin/punto-venta')
                   ? 'bg-emerald-500/10 text-emerald-600'
@@ -238,6 +270,10 @@ export default function AdminLayout() {
                   Punto de Venta
                 </p>
               </Link>
+              )}
+
+              {/* Reportes: Admin y Supervisor */}
+              {['administrador', 'supervisor'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/reportes') || location.pathname.startsWith('/admin/reportes')
                   ? 'bg-primary/10 text-primary'
@@ -255,6 +291,7 @@ export default function AdminLayout() {
                   Reportes
                 </p>
               </Link>
+              )}
             </nav>
           </div>
           <div className="flex flex-col gap-1">

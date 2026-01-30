@@ -92,6 +92,7 @@ export default function PuntoVenta() {
                     precio: parseFloat(p.precioVenta) || parseFloat(p.precio) || 0,
                     stock: parseInt(p.stockActual) || parseInt(p.stock) || 0,
                     imagen: p.imagen,
+                    talla: p.talla,
                     icon: getProductIcon(p.categoriaId),
                     color: getProductColor(p.categoriaId)
                 }));
@@ -124,24 +125,26 @@ export default function PuntoVenta() {
                     });
                     // Obtener saldo de caja
                     setSaldoCaja(parseFloat(caja.saldo) || parseFloat(caja.saldoActual) || parseFloat(caja.efectivo) || 0);
+                    
+                    // Verify if caja is actually open, otherwise redirect
+                    if (caja.estado === 'CERRADA') {
+                        localStorage.removeItem('cajaActiva');
+                        navigate('/admin/apertura-cajas');
+                    }
+
                 } else {
-                    // Fallback if caja fetch fails
-                    setCajaInfo({
-                        sucursal: 'Sucursal',
-                        caja: 'Caja',
-                        usuario: user.nombres || user.email || 'usuario'
-                    });
+                    // Si falla la verificación, redirigir
+                    localStorage.removeItem('cajaActiva');
+                    navigate('/admin/apertura-cajas');
                 }
             } else {
-                const user = JSON.parse(localStorage.getItem('user') || '{}');
-                setCajaInfo({
-                    sucursal: 'Sin Caja',
-                    caja: 'Sin Caja Activa',
-                    usuario: user.nombres || user.email || 'usuario'
-                });
+                // Si no hay caja activa en storage, redirigir a apertura
+                navigate('/admin/apertura-cajas');
             }
         } catch (err) {
             console.error('Error loading caja info:', err);
+            // On error, let's look for safe fallback or redirect
+             navigate('/admin/apertura-cajas');
         }
     };
 
@@ -204,6 +207,7 @@ export default function PuntoVenta() {
                 nombre: product.nombre,
                 precioUnit: product.precio,
                 stock: product.stock,
+                talla: product.talla,
                 cantidad: 1
             }]);
         }
@@ -548,7 +552,12 @@ export default function PuntoVenta() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.nombre}</p>
-                                                <p className="text-xs text-emerald-600 font-bold">Bs. {product.precio.toFixed(2)}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs text-emerald-600 font-bold">Bs. {product.precio.toFixed(2)}</p>
+                                                    {product.talla && (
+                                                        <span className="text-xs text-gray-500">• Talla: <span className="font-semibold">{product.talla}</span></span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <span className="material-symbols-outlined text-emerald-500 text-lg">add_circle</span>
                                         </button>
@@ -569,6 +578,11 @@ export default function PuntoVenta() {
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <h3 className="font-bold text-gray-900 dark:text-white text-sm">{item.nombre}</h3>
+                                        {item.talla && (
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                Talla: <span className="font-semibold text-gray-700 dark:text-gray-300">{item.talla}</span>
+                                            </p>
+                                        )}
                                         <p className="text-xs text-gray-500">
                                             precio unit: <span className="text-emerald-600 font-semibold">Bs. {item.precioUnit.toFixed(2)}</span>
                                         </p>
@@ -649,9 +663,16 @@ export default function PuntoVenta() {
                                     </div>
                                 </div>
                                 <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">{product.nombre}</h3>
-                                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                                    Bs. {product.precio.toFixed(2)}
-                                </p>
+                                <div className="flex items-end justify-between">
+                                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                        Bs. {product.precio.toFixed(2)}
+                                    </p>
+                                    {product.talla && (
+                                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                            {product.talla}
+                                        </p>
+                                    )}
+                                </div>
                             </button>
                         ))}
                     </div>
@@ -690,12 +711,22 @@ export default function PuntoVenta() {
                     {/* Total Button */}
                     <div className="p-3">
                         <button
-                            onClick={() => cart.length > 0 && handlePaymentSelect('efectivo')}
-                            className="total-btn w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-2xl shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-600 transition-all btn-bounce"
+                            onClick={() => selectedPayment && cart.length > 0 && setShowPaymentModal(true)}
+                            disabled={!selectedPayment || cart.length === 0}
+                            className={`total-btn w-full py-4 px-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-2xl transition-all btn-bounce ${
+                                selectedPayment && cart.length > 0
+                                    ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-600'
+                                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
+                            }`}
                         >
-                            <span className="heart text-2xl">💚</span>
+                            <span className="heart text-2xl">{selectedPayment && cart.length > 0 ? '💚' : '🔒'}</span>
                             <span>Bs. {total.toFixed(2)}</span>
                         </button>
+                        {!selectedPayment && cart.length > 0 && (
+                            <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                                Selecciona un método de pago arriba
+                            </p>
+                        )}
                     </div>
                 </aside>
 
@@ -871,18 +902,32 @@ export default function PuntoVenta() {
                                     </div>
                                 </div>
 
-                                {/* Cobrar Button */}
-                                {/* Cobrar Button */}
-                                <button
-                                    onClick={handleCobrar}
-                                    disabled={loading || restante > 0 || cart.length === 0}
-                                    className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${restante <= 0 && cart.length > 0 && !loading
-                                        ? 'bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1'
-                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                        }`}
-                                >
-                                    {loading ? 'Procesando...' : `COBRAR (enter)`}
-                                </button>
+                                {/* Action Buttons */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* Cancelar Venta Button */}
+                                    <button
+                                        onClick={() => {
+                                            setShowPaymentModal(false);
+                                            setMontoEfectivo('');
+                                            setSelectedPayment(null);
+                                        }}
+                                        className="py-3 rounded-xl font-bold text-base transition-all bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 btn-bounce"
+                                    >
+                                        CANCELAR VENTA
+                                    </button>
+                                    
+                                    {/* Cobrar Button */}
+                                    <button
+                                        onClick={handleCobrar}
+                                        disabled={loading || restante > 0 || cart.length === 0}
+                                        className={`py-3 rounded-xl font-bold text-base transition-all ${restante <= 0 && cart.length > 0 && !loading
+                                            ? 'bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg hover:shadow-xl hover:-translate-y-1'
+                                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                    >
+                                        {loading ? 'Procesando...' : `COBRAR (enter)`}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Back Button */}

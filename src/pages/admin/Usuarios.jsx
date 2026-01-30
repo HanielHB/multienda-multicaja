@@ -6,6 +6,7 @@ const API_URL = '/api';
 export default function Usuarios() {
     const [usuarios, setUsuarios] = useState([]);
     const [sucursales, setSucursales] = useState([]);
+    const [cajas, setCajas] = useState([]); // Nuevo estado para cajas
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -16,6 +17,8 @@ export default function Usuarios() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState('');
     const [formData, setFormData] = useState({
         nombre: '',
         apellido: '',
@@ -25,8 +28,8 @@ export default function Usuarios() {
         telefono: '',
         tipo: 'cajero',
         sucursalId: '',
-        estado: true,
-        permisos: []
+        cajaId: '', // Nuevo campo
+        estado: true
     });
 
     // Check if we are creating or editing
@@ -59,6 +62,7 @@ export default function Usuarios() {
     useEffect(() => {
         fetchUsuarios();
         fetchSucursales();
+        fetchCajas(); // Cargar cajas
     }, []);
 
     const fetchUsuarios = async () => {
@@ -97,6 +101,21 @@ export default function Usuarios() {
         }
     };
 
+    const fetchCajas = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/cajas`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const result = await response.json();
+                setCajas(Array.isArray(result) ? result : (result.data || []));
+            }
+        } catch (err) {
+            console.error('Error fetching cajas:', err);
+        }
+    };
+
     const handleDelete = async (id) => {
         if (!window.confirm('¿Estás seguro de eliminar este usuario?')) return;
 
@@ -117,8 +136,39 @@ export default function Usuarios() {
         }
     };
 
+    const validatePassword = (password) => {
+        if (password.length === 0) {
+            setPasswordError('');
+            return true;
+        }
+        
+        if (password.length < 8) {
+            setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número');
+            return false;
+        }
+        
+        if (!/[A-Z]/.test(password)) {
+            setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número');
+            return false;
+        }
+        
+        if (!/[0-9]/.test(password)) {
+            setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número');
+            return false;
+        }
+        
+        setPasswordError('');
+        return true;
+    };
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
+        
+        // Validar contraseña en tiempo real
+        if (name === 'password') {
+            validatePassword(value);
+        }
+        
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -143,8 +193,8 @@ export default function Usuarios() {
                 telefono: usuario.telefono || '',
                 tipo: usuario.tipo || 'cajero',
                 sucursalId: usuario.sucursalId || '',
-                estado: usuario.estado ?? true,
-                permisos: usuario.permisos || []
+                cajaId: usuario.cajaId || '', // Cargar caja asignada
+                estado: usuario.estado ?? true
             });
         } else {
             setEditingId(null);
@@ -157,8 +207,8 @@ export default function Usuarios() {
                 telefono: '',
                 tipo: 'cajero',
                 sucursalId: '',
-                estado: true,
-                permisos: []
+                cajaId: '',
+                estado: true
             });
         }
         setIsModalOpen(true);
@@ -167,6 +217,8 @@ export default function Usuarios() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingId(null);
+        setShowPassword(false);
+        setPasswordError('');
         setFormData({
             nombre: '',
             apellido: '',
@@ -176,13 +228,19 @@ export default function Usuarios() {
             telefono: '',
             tipo: 'cajero',
             sucursalId: '',
-            estado: true,
-            permisos: []
+            cajaId: '',
+            estado: true
         });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validar contraseña si se está creando o si se está editando y se ingresó una nueva contraseña
+        if ((!isEditing || formData.password) && passwordError) {
+            return;
+        }
+        
         setFormLoading(true);
 
         try {
@@ -203,6 +261,12 @@ export default function Usuarios() {
             // Ensure sucursalId is number
             if (dataToSend.sucursalId) {
                 dataToSend.sucursalId = parseInt(dataToSend.sucursalId);
+            }
+            // Ensure cajaId is number
+            if (dataToSend.cajaId) {
+                dataToSend.cajaId = parseInt(dataToSend.cajaId);
+            } else {
+                dataToSend.cajaId = null; // Si no hay caja, enviar null
             }
 
             const response = await fetch(url, {
@@ -475,15 +539,36 @@ export default function Usuarios() {
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         {isEditing ? 'Nueva Contraseña (opcional)' : 'Contraseña *'}
                                     </label>
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
-                                        placeholder="••••••"
-                                        required={!isEditing}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            name="password"
+                                            value={formData.password}
+                                            onChange={handleChange}
+                                            className={`w-full px-4 py-2 pr-10 rounded-lg border ${
+                                                passwordError && formData.password 
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                                                    : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'
+                                            } dark:bg-gray-800 dark:text-white text-sm`}
+                                            placeholder="••••••"
+                                            required={!isEditing}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-gray hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                                            tabIndex="-1"
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">
+                                                {showPassword ? 'visibility_off' : 'visibility'}
+                                            </span>
+                                        </button>
+                                    </div>
+                                    {passwordError && formData.password && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                            {passwordError}
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Sucursal */}
@@ -519,6 +604,30 @@ export default function Usuarios() {
                                     </select>
                                 </div>
 
+                                {/* Caja (Solo si es Cajero y hay sucursal seleccionada) */}
+                                {formData.tipo === 'cajero' && (
+                                    <div className="animate-[fadeIn_0.3s_ease-out]">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Caja Asignada</label>
+                                        <select
+                                            name="cajaId"
+                                            value={formData.cajaId}
+                                            onChange={handleChange}
+                                            className="w-full px-4 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
+                                            disabled={!formData.sucursalId}
+                                        >
+                                            <option value="">
+                                                {formData.sucursalId ? 'Seleccionar caja...' : 'Seleccione primero una sucursal'}
+                                            </option>
+                                            {cajas
+                                                .filter(c => !formData.sucursalId || c.sucursalId === parseInt(formData.sucursalId))
+                                                .map(c => (
+                                                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+                                )}
+
                                 {/* Documento */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nro. Documento</label>
@@ -543,53 +652,6 @@ export default function Usuarios() {
                                         className="w-full px-4 py-2 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-primary text-sm"
                                         placeholder="+591 70000000"
                                     />
-                                </div>
-
-                                {/* Permisos Section */}
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Permisos</label>
-                                    <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border-light dark:border-border-dark max-h-60 overflow-y-auto">
-                                        {[
-                                            { key: 'dashboard', label: 'Dashboard' },
-                                            { key: 'productos', label: 'Productos' },
-                                            { key: 'categorias', label: 'Categorías' },
-                                            { key: 'proveedores', label: 'Proveedores' },
-                                            { key: 'metodos_pago', label: 'Métodos de Pago' },
-                                            { key: 'clientes', label: 'Clientes' },
-                                            { key: 'sucursales', label: 'Sucursales' },
-                                            { key: 'usuarios', label: 'Usuarios' },
-                                            { key: 'almacenes', label: 'Almacenes' },
-                                            { key: 'inventario', label: 'Inventario' },
-                                            { key: 'apertura_cajas', label: 'Apertura Cajas' },
-                                            { key: 'punto_venta', label: 'Punto de Venta' },
-                                            { key: 'reportes', label: 'Reportes' }
-                                        ].map(permiso => (
-                                            <div key={permiso.key} className="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id={`permiso-${permiso.key}`}
-                                                    checked={formData.permisos.includes(permiso.key)}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                permisos: [...prev.permisos, permiso.key]
-                                                            }));
-                                                        } else {
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                permisos: prev.permisos.filter(p => p !== permiso.key)
-                                                            }));
-                                                        }
-                                                    }}
-                                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                />
-                                                <label htmlFor={`permiso-${permiso.key}`} className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                                                    {permiso.label}
-                                                </label>
-                                            </div>
-                                        ))}
-                                    </div>
                                 </div>
 
                                 {/* Estado Checkbox */}
