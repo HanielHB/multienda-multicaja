@@ -21,8 +21,32 @@ export default function Reportes() {
         return date.toISOString().split('T')[0];
     });
 
+    // Branch Filter
+    const [selectedSucursal, setSelectedSucursal] = useState('all');
+    const [sucursales, setSucursales] = useState([]);
+
     // Trigger state to refetch data
     const [shouldFetch, setShouldFetch] = useState(0);
+
+    // Fetch branches on mount
+    useEffect(() => {
+        fetchSucursales();
+    }, []);
+
+    const fetchSucursales = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/sucursales`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSucursales(data.data || data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching sucursales:', err);
+        }
+    };
 
     const handleGenerate = () => {
         setShouldFetch(prev => prev + 1);
@@ -142,6 +166,23 @@ export default function Reportes() {
                             </button>
                         </div>
 
+                        {/* Branch Selector */}
+                        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sucursal:</label>
+                            <select
+                                value={selectedSucursal}
+                                onChange={(e) => setSelectedSucursal(e.target.value)}
+                                className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                            >
+                                <option value="all">Todas las Sucursales</option>
+                                {sucursales.map((sucursal) => (
+                                    <option key={sucursal.id} value={sucursal.id}>
+                                        {sucursal.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
                         <button
                              onClick={handlePrint}
                              className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
@@ -193,10 +234,10 @@ export default function Reportes() {
 
                 {/* Content */}
                 <div className="flex-1 printable-area">
-                    {activeTab === 'ventas' && <ReportesVentas startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
-                    {activeTab === 'inventario' && <ReportesInventario startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
-                    {activeTab === 'bi' && <ReportesBI startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
-                    {activeTab === 'caja' && <ReportesCaja startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} />}
+                    {activeTab === 'ventas' && <ReportesVentas startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
+                    {activeTab === 'inventario' && <ReportesInventario startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
+                    {activeTab === 'bi' && <ReportesBI startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
+                    {activeTab === 'caja' && <ReportesCaja startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
                 </div>
             </div>
         </>
@@ -206,17 +247,17 @@ export default function Reportes() {
 // --- Componentes de Reportes de Ventas ---
 
 
-function ReportesVentas({ startDate, endDate, shouldFetch, onExport }) {
+function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
     const [ventasPeriodo, setVentasPeriodo] = useState(null);
     const [gananciaReal, setGananciaReal] = useState(null);
     const [ventasMetodoPago, setVentasMetodoPago] = useState([]);
     
-    // Effect to fetch data when "Generar" is clicked (shouldFetch changes)
+    // Effect to fetch data when "Generar" is clicked (shouldFetch changes) or sucursalId changes
     useEffect(() => {
         fetchVentasPeriodo();
         fetchGananciaReal();
         fetchVentasMetodoPago();
-    }, [shouldFetch]);
+    }, [shouldFetch, sucursalId]);
 
     // Effect to update export data when data changes
     useEffect(() => {
@@ -240,7 +281,11 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport }) {
     const fetchVentasPeriodo = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/ventas-periodo?fechaInicio=${startDate}&fechaFin=${endDate}`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/ventas-periodo?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) setVentasPeriodo(await res.json());
@@ -250,7 +295,11 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport }) {
     const fetchGananciaReal = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/ganancia-real?fechaInicio=${startDate}&fechaFin=${endDate}`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/ganancia-real?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) setGananciaReal(await res.json());
@@ -260,7 +309,11 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport }) {
     const fetchVentasMetodoPago = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/metodo-pago?fechaInicio=${startDate}&fechaFin=${endDate}`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/metodo-pago?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -401,7 +454,7 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport }) {
 // --- Componentes de Reportes de Inventario ---
 
 
-function ReportesInventario({ startDate, endDate, shouldFetch, onExport }) {
+function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
     const [inventarioValorado, setInventarioValorado] = useState(null);
     const [productosHueso, setProductosHueso] = useState(null);
     
@@ -410,14 +463,14 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport }) {
         const start = new Date(startDate);
         const end = new Date(endDate);
         const diffTime = Math.abs(end - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        return diffDays > 0 ? diffDays : 90; // Default or calculated
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays || 1;
     };
 
     useEffect(() => {
         fetchInventarioValorado();
         fetchProductosHueso();
-    }, [shouldFetch]);
+    }, [shouldFetch, sucursalId]);
 
     // Update manually if dates change? Or only on Generate?
     // The requirement implies "Generate" button triggers the update.
@@ -427,7 +480,11 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport }) {
     const fetchInventarioValorado = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/inventario-valorado`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/inventario-valorado?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) setInventarioValorado(await res.json());
@@ -436,9 +493,12 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport }) {
 
     const fetchProductosHueso = async () => {
         try {
-            const dias = getDaysDiff();
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/rotacion-inventario?dias=${dias}`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/productos-sin-movimiento?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) setProductosHueso(await res.json());
@@ -549,19 +609,23 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport }) {
 // --- Componentes de Inteligencia de Negocios (BI) ---
 
 
-function ReportesBI({ startDate, endDate, shouldFetch, onExport }) {
+function ReportesBI({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
     const [topCategorias, setTopCategorias] = useState([]);
     const [analisisTallas, setAnalisisTallas] = useState([]);
 
     useEffect(() => {
         fetchTopCategorias();
         fetchAnalisisTallas();
-    }, [shouldFetch]);
+    }, [shouldFetch, sucursalId]);
 
     const fetchTopCategorias = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/bi/categorias?fechaInicio=${startDate}&fechaFin=${endDate}`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/bi/categorias?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -574,7 +638,11 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport }) {
     const fetchAnalisisTallas = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/bi/tallas?fechaInicio=${startDate}&fechaFin=${endDate}`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/bi/tallas?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -706,7 +774,7 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport }) {
 
 // --- Componentes de Reportes de Caja ---
 
-function ReportesCaja({ startDate, endDate, shouldFetch, onExport }) {
+function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
     const [sesiones, setSesiones] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [modalData, setModalData] = useState({ tipo: '', movimientos: [], sesion: null });
@@ -714,12 +782,16 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport }) {
 
     useEffect(() => {
         fetchReporteCajas();
-    }, [shouldFetch]);
+    }, [shouldFetch, sucursalId]);
 
     const fetchReporteCajas = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/reportes/cajas-sesiones?fechaInicio=${startDate}&fechaFin=${endDate}`, {
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/cajas-sesiones?${params.join('&')}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
