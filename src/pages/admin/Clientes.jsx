@@ -15,8 +15,7 @@ export default function Clientes() {
     const itemsPerPage = 10;
     const [formData, setFormData] = useState({
         nombre: '',
-        email: '',
-        direccion: '',
+        nroDocumento: '',
         celular: ''
     });
 
@@ -25,8 +24,7 @@ export default function Clientes() {
         const searchLower = searchTerm.toLowerCase();
         return !searchTerm || 
             cli.nombre?.toLowerCase().includes(searchLower) ||
-            cli.email?.toLowerCase().includes(searchLower) ||
-            cli.direccion?.toLowerCase().includes(searchLower) ||
+            cli.nroDocumento?.toLowerCase().includes(searchLower) ||
             cli.celular?.toLowerCase().includes(searchLower);
     });
 
@@ -113,13 +111,12 @@ export default function Clientes() {
             setEditingId(cliente.id);
             setFormData({
                 nombre: cliente.nombre || '',
-                email: cliente.email || '',
-                direccion: cliente.direccion || '',
+                nroDocumento: cliente.nroDocumento || '',
                 celular: cliente.celular || ''
             });
         } else {
             setEditingId(null);
-            setFormData({ nombre: '', email: '', direccion: '', celular: '' });
+            setFormData({ nombre: '', nroDocumento: '', celular: '' });
         }
         setIsModalOpen(true);
     };
@@ -127,7 +124,7 @@ export default function Clientes() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingId(null);
-        setFormData({ nombre: '', email: '', direccion: '', celular: '' });
+        setFormData({ nombre: '', nroDocumento: '', celular: '' });
     };
 
     const handleSubmit = async (e) => {
@@ -231,8 +228,7 @@ export default function Clientes() {
                         <thead>
                             <tr className="bg-background-light dark:bg-gray-900/50 border-b border-border-light dark:border-border-dark text-xs uppercase text-neutral-gray font-semibold tracking-wide">
                                 <th className="p-4 pl-6">Nombre</th>
-                                <th className="p-4">Email</th>
-                                <th className="p-4">Dirección</th>
+                                <th className="p-4">Nro. Documento</th>
                                 <th className="p-4">Celular</th>
                                 <th className="p-4 pr-6 text-right w-32">Acciones</th>
                             </tr>
@@ -240,7 +236,7 @@ export default function Clientes() {
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
                             {clientes.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="py-12 text-center">
+                                    <td colSpan="4" className="py-12 text-center">
                                         <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 text-6xl mb-4 block">group</span>
                                         <p className="text-neutral-gray dark:text-gray-400">No hay clientes registrados</p>
                                         <button onClick={() => openModal()} className="text-primary hover:underline text-sm mt-2 inline-block">
@@ -261,12 +257,7 @@ export default function Clientes() {
                                         </td>
                                         <td className="p-4">
                                             <span className="text-sm text-neutral-gray dark:text-gray-400">
-                                                {cliente.email || 'Sin email'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className="text-sm text-neutral-gray dark:text-gray-400">
-                                                {cliente.direccion || 'Sin dirección'}
+                                                {cliente.nroDocumento || 'Sin documento'}
                                             </span>
                                         </td>
                                         <td className="p-4">
@@ -376,33 +367,18 @@ export default function Clientes() {
                                     />
                                 </div>
 
-                                {/* Email */}
+                                {/* Número de Documento */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                        Email
-                                    </label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
-                                        placeholder="cliente@email.com"
-                                    />
-                                </div>
-
-                                {/* Dirección */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                        Dirección
+                                        Número de Documento
                                     </label>
                                     <input
                                         type="text"
-                                        name="direccion"
-                                        value={formData.direccion}
+                                        name="nroDocumento"
+                                        value={formData.nroDocumento}
                                         onChange={handleChange}
                                         className="w-full px-4 py-3 rounded-lg border border-border-light dark:border-border-dark dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
-                                        placeholder="Av. Principal #456"
+                                        placeholder="Ej. 12345678"
                                     />
                                 </div>
 

@@ -61,10 +61,10 @@ export default function Login() {
               </div>
               <div className="text-center">
                 <h1 className="text-gray-900 dark:text-white text-2xl font-bold leading-tight">
-                  Zapatería Veloz
+                  Jani Shoes
                 </h1>
                 <p className="text-neutral-gray dark:text-gray-400 text-sm font-medium mt-1">
-                  Inicio de Sesión POS
+                  Inicio de Sesión
                 </p>
               </div>
             </div>

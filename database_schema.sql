@@ -175,24 +175,9 @@ CREATE TABLE IF NOT EXISTS `inventario` (
 CREATE TABLE IF NOT EXISTS `clientes` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `nombre` VARCHAR(150) NOT NULL,
-  `email` VARCHAR(100) NULL,
+  `nro_documento` VARCHAR(20) NULL,
   `direccion` TEXT NULL,
   `celular` VARCHAR(20) NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `proveedores`
--- Derived from: src/pages/admin/Proveedores.jsx
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `proveedores` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `nombre` VARCHAR(150) NOT NULL,
-  `direccion` TEXT NULL,
-  `celular` VARCHAR(20) NULL,
-  `contacto` VARCHAR(100) NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -294,46 +279,6 @@ CREATE TABLE IF NOT EXISTS `movimientos_caja` (
   CONSTRAINT `fk_movimientos_usuario`
     FOREIGN KEY (`usuario_id`)
     REFERENCES `usuarios` (`id`)
-) ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `compras` (Optional, implied by Suppliers/Products)
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `compras` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `proveedor_id` INT NOT NULL,
-  `usuario_id` INT NOT NULL,
-  `sucursal_id` INT NOT NULL,
-  `fecha` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `total` DECIMAL(10,2) NOT NULL,
-  `numero_comprobante` VARCHAR(50) NULL,
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_compras_proveedor`
-    FOREIGN KEY (`proveedor_id`)
-    REFERENCES `proveedores` (`id`),
-  CONSTRAINT `fk_compras_usuario`
-    FOREIGN KEY (`usuario_id`)
-    REFERENCES `usuarios` (`id`)
-) ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- Table `detalle_compras`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `detalle_compras` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `compra_id` INT NOT NULL,
-  `producto_id` INT NOT NULL,
-  `cantidad` INT NOT NULL,
-  `precio_compra` DECIMAL(10,2) NOT NULL,
-  `subtotal` DECIMAL(10,2) NOT NULL,
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_detalle_compra`
-    FOREIGN KEY (`compra_id`)
-    REFERENCES `compras` (`id`)
-    ON DELETE CASCADE,
-  CONSTRAINT `fk_detalle_compra_prod`
-    FOREIGN KEY (`producto_id`)
-    REFERENCES `productos` (`id`)
 ) ENGINE = InnoDB;
 
 SET SQL_MODE=@OLD_SQL_MODE;

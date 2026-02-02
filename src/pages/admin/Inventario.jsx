@@ -208,7 +208,7 @@ export default function Inventario() {
             
             if (esTransferencia) {
                 // Transferencia: usar el nuevo endpoint que busca producto equivalente
-                const transferResponse = await fetch(`${API_URL}/inventarios/transferir`, {
+                const transferResponse = await fetch(`${API_URL}/inventarios/transferencia`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -330,6 +330,7 @@ export default function Inventario() {
     const exportToExcel = () => {
         const dataToExport = filteredMovimientos.map(mov => ({
             'Fecha': formatDate(mov.createdAt),
+            'Usuario': mov.usuario?.nombres || 'Sistema',
             'Sucursal': mov.almacen?.sucursal?.nombre || 'N/A',
             'Almacén': mov.almacen?.nombre || 'N/A',
             'Movimiento': getMovementTypeDisplay(mov.motivo),
@@ -377,6 +378,7 @@ export default function Inventario() {
         const tableRows = filteredMovimientos.map(mov => `
             <tr>
                 <td style="padding: 8px; border: 1px solid #ddd; font-size: 12px;">${formatDate(mov.createdAt)}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${mov.usuario?.nombres || 'Sistema'}</td>
                 <td style="padding: 8px; border: 1px solid #ddd;">${mov.almacen?.sucursal?.nombre || 'N/A'}</td>
                 <td style="padding: 8px; border: 1px solid #ddd;">${mov.almacen?.nombre || 'N/A'}</td>
                 <td style="padding: 8px; border: 1px solid #ddd;">${getMovementTypeDisplay(mov.motivo)}</td>
@@ -415,6 +417,7 @@ export default function Inventario() {
                     <thead>
                         <tr>
                             <th>Fecha</th>
+                            <th>Usuario</th>
                             <th>Sucursal</th>
                             <th>Almacén</th>
                             <th>Movimiento</th>
@@ -556,6 +559,11 @@ export default function Inventario() {
                                 </th>
                                 <th className="p-4">
                                     <div className="flex items-center gap-1 cursor-pointer hover:text-gray-700">
+                                        Usuario <span className="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th className="p-4">
+                                    <div className="flex items-center gap-1 cursor-pointer hover:text-gray-700">
                                         Sucursal <span className="material-symbols-outlined text-[14px]">unfold_more</span>
                                     </div>
                                 </th>
@@ -589,7 +597,7 @@ export default function Inventario() {
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
                             {paginatedMovimientos.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="p-8 text-center text-neutral-gray">
+                                    <td colSpan="8" className="p-8 text-center text-neutral-gray">
                                         <span className="material-symbols-outlined text-4xl mb-2 block">inventory_2</span>
                                         No hay movimientos registrados
                                     </td>
@@ -600,6 +608,11 @@ export default function Inventario() {
                                         <td className="p-4 pl-6">
                                             <span className="text-sm text-gray-700 dark:text-gray-300 font-mono">
                                                 {formatDate(mov.createdAt)}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                {mov.usuario?.nombres || 'Sistema'}
                                             </span>
                                         </td>
                                         <td className="p-4">

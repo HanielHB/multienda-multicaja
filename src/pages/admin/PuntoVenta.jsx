@@ -14,7 +14,7 @@ export default function PuntoVenta() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showIngresoModal, setShowIngresoModal] = useState(false);
     const [showRetiroModal, setShowRetiroModal] = useState(false);
-    const [tipoDocumento, setTipoDocumento] = useState('factura');
+    const [tipoDocumento, setTipoDocumento] = useState('ticket');
     const [numeroFactura, setNumeroFactura] = useState('F001-0');
     const [clienteNombre, setClienteNombre] = useState('cliente');
     const [montoEfectivo, setMontoEfectivo] = useState('');
@@ -463,6 +463,7 @@ export default function PuntoVenta() {
                     tipoDocumento: tipoDocumento,
                     fecha: new Date(),
                     cliente: selectedCliente?.nombre || clienteNombre,
+                    clienteDocumento: selectedCliente?.nroDocumento || '',
                     vendedor: user.nombres || user.email || 'Vendedor',
                     sucursal: cajaInfo.sucursal,
                     caja: cajaInfo.caja,
@@ -882,46 +883,11 @@ export default function PuntoVenta() {
 
                             {/* Content */}
                             <div className="flex-1 px-8 py-4 flex flex-col">
-                                {/* Invoice Number */}
+                                {/* Ticket Number */}
                                 <div className="text-center mb-6">
                                     <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300">
-                                        Factura: <span className="font-black text-gray-900 dark:text-white">{numeroFactura}</span>
+                                        Ticket: <span className="font-black text-gray-900 dark:text-white">{numeroFactura}</span>
                                     </h2>
-                                </div>
-
-                                {/* Document Type Toggle */}
-                                <div className="flex justify-center gap-3 mb-4">
-                                    <button
-                                        onClick={() => setTipoDocumento('factura')}
-                                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${tipoDocumento === 'factura'
-                                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-                                            : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        Factura
-                                    </button>
-                                    <button
-                                        onClick={() => setTipoDocumento('boleta')}
-                                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${tipoDocumento === 'boleta'
-                                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-                                            : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        Boleta
-                                    </button>
-                                </div>
-
-                                {/* Ticket Button */}
-                                <div className="flex justify-center mb-6">
-                                    <button
-                                        onClick={() => setTipoDocumento('ticket')}
-                                        className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all ${tipoDocumento === 'ticket'
-                                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-                                            : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        Ticket
-                                    </button>
                                 </div>
 
                                 {/* Client Selector */}
@@ -971,8 +937,8 @@ export default function PuntoVenta() {
                                                 .filter(c =>
                                                     !searchCliente ||
                                                     c.nombre?.toLowerCase().includes(searchCliente.toLowerCase()) ||
-                                                    c.telefono?.includes(searchCliente) ||
-                                                    c.nit?.includes(searchCliente)
+                                                    c.nroDocumento?.includes(searchCliente) ||
+                                                    c.celular?.includes(searchCliente)
                                                 )
                                                 .slice(0, 10)
                                                 .map(cliente => (
@@ -989,8 +955,17 @@ export default function PuntoVenta() {
                                                             {cliente.nombre?.charAt(0)?.toUpperCase() || 'C'}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{cliente.nombre}</p>
-                                                            <p className="text-xs text-gray-500">{cliente.telefono || cliente.nit || ''}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                                    {cliente.nombre}
+                                                                </p>
+                                                                {cliente.nroDocumento && (
+                                                                    <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                                                        {cliente.nroDocumento}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-gray-500">{cliente.celular || ''}</p>
                                                         </div>
                                                     </button>
                                                 ))
@@ -1000,8 +975,8 @@ export default function PuntoVenta() {
                                             {searchCliente.trim() && clientes.filter(c =>
                                                 !searchCliente ||
                                                 c.nombre?.toLowerCase().includes(searchCliente.toLowerCase()) ||
-                                                c.telefono?.includes(searchCliente) ||
-                                                c.nit?.includes(searchCliente)
+                                                c.nroDocumento?.includes(searchCliente) ||
+                                                c.celular?.includes(searchCliente)
                                             ).length === 0 && (
                                                 <button
                                                     onClick={() => {
@@ -1054,7 +1029,7 @@ export default function PuntoVenta() {
                                         <span className="font-black text-lg text-gray-900 dark:text-white">Bs. {total.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Vuelto:</span>
+                                        <span className="text-gray-500">Cambio:</span>
                                         <span className="font-bold text-emerald-600">Bs. {vuelto.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
@@ -1560,10 +1535,7 @@ export default function PuntoVenta() {
                             <div id="ticket-print" className="p-6 bg-white">
                                 {/* Header */}
                                 <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-                                    <div className="border-2 border-gray-800 px-4 py-2 inline-block mb-2">
-                                        <span className="text-xs">TU LOGO</span>
-                                        <p className="font-bold text-lg">AQUÍ</p>
-                                    </div>
+                                    <img src="/logo-ticket.jpg" alt="Logo" className="h-24 mx-auto mb-2 object-contain" />
                                     <p className="font-bold text-lg">{ventaCompletada.sucursal}</p>
                                     <p className="text-sm text-gray-500">-</p>
                                 </div>
@@ -1583,8 +1555,7 @@ export default function PuntoVenta() {
                                 <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
                                     <p className="font-bold text-sm">CLIENTE:</p>
                                     <p className="text-sm">NOMBRES: {ventaCompletada.cliente}</p>
-                                    <p className="text-sm">DOC.ID: -</p>
-                                    <p className="text-sm">DIRECC.: -</p>
+                                    <p className="text-sm">Nro. Documento: {ventaCompletada.clienteDocumento || '-'}</p>
                                 </div>
 
                                 {/* Products Table */}
@@ -1634,7 +1605,7 @@ export default function PuntoVenta() {
                                         <span>{ventaCompletada.montoRecibido.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span>Vuelto: Bs.</span>
+                                        <span>Cambio: Bs.</span>
                                         <span>{ventaCompletada.vuelto.toFixed(2)}</span>
                                     </div>
                                 </div>

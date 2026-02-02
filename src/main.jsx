@@ -14,8 +14,6 @@ import Productos from './pages/admin/Productos.jsx';
 import AddProducto from './pages/admin/AddProducto.jsx';
 import Categorias from './pages/admin/Categorias.jsx';
 import AddCategoria from './pages/admin/AddCategoria.jsx';
-import Proveedores from './pages/admin/Proveedores.jsx';
-import AddProveedor from './pages/admin/AddProveedor.jsx';
 import MetodosPago from './pages/admin/MetodosPago.jsx';
 import Clientes from './pages/admin/Clientes.jsx';
 import Sucursales from './pages/admin/Sucursales.jsx';
@@ -80,20 +78,12 @@ const router = createBrowserRouter([
         element: <ProtectedRoute allowedRoles={['administrador']}><AddCategoria /></ProtectedRoute>
       },
       {
-        path: 'proveedores',
-        element: <ProtectedRoute allowedRoles={['administrador']}><Proveedores /></ProtectedRoute>
-      },
-      {
-        path: 'proveedores/add',
-        element: <ProtectedRoute allowedRoles={['administrador']}><AddProveedor /></ProtectedRoute>
-      },
-      {
         path: 'metodos-pago',
         element: <ProtectedRoute allowedRoles={['administrador']}><MetodosPago /></ProtectedRoute>
       },
       {
         path: 'clientes',
-        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Clientes /></ProtectedRoute>
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'cajero']}><Clientes /></ProtectedRoute>
       },
       {
         path: 'sucursales',
@@ -109,7 +99,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'inventario',
-        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Inventario /></ProtectedRoute>
+        element: <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'cajero']}><Inventario /></ProtectedRoute>
       },
       {
         path: 'apertura-cajas',

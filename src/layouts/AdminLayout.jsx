@@ -43,9 +43,12 @@ export default function AdminLayout() {
                 <span className="material-symbols-outlined text-primary text-2xl">store</span>
               </div>
               <div className="flex flex-col">
-                <h1 className="text-dark-charcoal dark:text-white text-base font-bold leading-normal">Zapatería Telléz</h1>
+                <h1 className="text-dark-charcoal dark:text-white text-base font-bold leading-normal">Jani Shoes</h1>
                 <p className="text-neutral-gray text-sm font-normal leading-normal capitalize">
                   Panel {user.tipo ? user.tipo : 'Usuario'}
+                </p>
+                <p className="text-neutral-gray text-sm font-normal leading-normal capitalize">
+                  Usuario: {user.nombres ? user.nombres : 'Nombres'}
                 </p>
               </div>
             </div>
@@ -113,31 +116,10 @@ export default function AdminLayout() {
               </Link>
               )}
 
-              {/* Proveedores: Solo Admin */}
-              {['administrador'].includes(user?.tipo) && (
-              <Link
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/proveedores') || location.pathname.startsWith('/admin/proveedores')
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-neutral-gray hover:bg-primary/10 hover:text-primary'
-                  }`}
-                to="/admin/proveedores"
-              >
-                <span
-                  className="material-symbols-outlined text-2xl"
-                  style={isActive('/admin/proveedores') || location.pathname.startsWith('/admin/proveedores') ? { fontVariationSettings: "'FILL' 1" } : {}}
-                >
-                  local_shipping
-                </span>
-                <p className={`text-sm leading-normal ${isActive('/admin/proveedores') || location.pathname.startsWith('/admin/proveedores') ? 'font-bold' : 'font-medium'}`}>
-                  Proveedores
-                </p>
-              </Link>
-              )}
 
 
-
-              {/* Clientes: Admin y Supervisor */}
-              {['administrador', 'supervisor'].includes(user?.tipo) && (
+              {/* Clientes: Admin, Supervisor y Cajero */}
+              {['administrador', 'supervisor', 'cajero'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/clientes') || location.pathname.startsWith('/admin/clientes')
                   ? 'bg-primary/10 text-primary'
@@ -220,8 +202,8 @@ export default function AdminLayout() {
               </Link>
               )}
 
-              {/* Inventario: Admin y Supervisor */}
-              {['administrador', 'supervisor'].includes(user?.tipo) && (
+              {/* Inventario: Admin, Supervisor y Cajero */}
+              {['administrador', 'supervisor', 'cajero'].includes(user?.tipo) && (
               <Link
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/inventario') || location.pathname.startsWith('/admin/inventario')
                   ? 'bg-primary/10 text-primary'

@@ -218,7 +218,7 @@ export default function Reportes() {
                                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                                     }`}
                             >
-                                Inteligencia (BI)
+                                Análisis
                             </button>
                             <button
                                 onClick={() => setActiveTab('caja')}
@@ -229,6 +229,15 @@ export default function Reportes() {
                             >
                                 Caja
                             </button>
+                            <button
+                                onClick={() => setActiveTab('clientes')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'clientes'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Clientes
+                            </button>
                         </div>
                 </div>
 
@@ -238,6 +247,7 @@ export default function Reportes() {
                     {activeTab === 'inventario' && <ReportesInventario startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
                     {activeTab === 'bi' && <ReportesBI startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
                     {activeTab === 'caja' && <ReportesCaja startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
+                    {activeTab === 'clientes' && <ReportesClientes startDate={startDate} endDate={endDate} shouldFetch={shouldFetch} onExport={exportToCSV} sucursalId={selectedSucursal !== 'all' ? selectedSucursal : null} />}
                 </div>
             </div>
         </>
@@ -846,6 +856,7 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                 <th className="px-4 py-3 text-right text-blue-600">Ingresos</th>
                                 <th className="px-4 py-3 text-right text-red-600">Retiros</th>
                                 <th className="px-4 py-3 text-right font-bold">Total Vendido</th>
+                                <th className="px-4 py-3 text-center">Cierre de Caja</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -896,6 +907,35 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                     </td>
                                     <td className="px-4 py-4 text-right font-black text-gray-900 dark:text-white">
                                         Bs. {sesion.totalVendido.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                        {sesion.estado === 'ABIERTA' ? (
+                                            <span className="text-gray-400 text-xs italic">
+                                                En curso...
+                                            </span>
+                                        ) : sesion.diferencia === null ? (
+                                            <span className="text-gray-400 text-xs">
+                                                -
+                                            </span>
+                                        ) : Math.abs(sesion.diferencia) < 0.01 ? (
+                                             <div className="flex flex-col items-center">
+                                                <span className="material-symbols-outlined text-emerald-500">check_circle</span>
+                                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Cuadro Perfecto</span>
+                                             </div>
+                                        ) : sesion.diferencia > 0 ? (
+                                            <div className="flex flex-col items-center">
+                                                <span className="material-symbols-outlined text-blue-500 rotate-180">arrow_downward</span>
+                                                 {/* Nota: Sobrante suele ser positivo en contabilidad si (Fisico - Sistema). Si Fisico > Sistema => Sobra dinero. */}
+                                                <span className="text-[10px] font-bold text-blue-600 uppercase">Sobrante</span>
+                                                <span className="text-xs font-bold text-blue-600">Bs. {sesion.diferencia.toFixed(2)}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center">
+                                                <span className="material-symbols-outlined text-red-500">arrow_downward</span>
+                                                <span className="text-[10px] font-bold text-red-600 uppercase">Faltante</span>
+                                                <span className="text-xs font-bold text-red-600">Bs. {Math.abs(sesion.diferencia).toFixed(2)}</span>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -999,5 +1039,147 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                 </div>
             )}
         </>
+    );
+}
+
+// --- Componentes de Reportes de Clientes ---
+
+function ReportesClientes({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
+    const [reporteData, setReporteData] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        fetchReporteClientes();
+    }, [shouldFetch, sucursalId]);
+
+    const fetchReporteClientes = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            const params = [`fechaInicio=${startDate}`, `fechaFin=${endDate}`];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/reportes/clientes?${params.join('&')}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setReporteData(await res.json());
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Preparar datos para exportar
+    const exportData = reporteData?.clientes?.map(c => ({
+        'Cliente': c.nombre,
+        'Email': c.email || 'N/A',
+        'Celular': c.celular || 'N/A',
+        'Cantidad Productos': c.cantidadProductos,
+        'Monto Total': c.montoTotal.toFixed(2)
+    })) || [];
+
+    return (
+        <div className="flex flex-col gap-6">
+            {/* Resumen Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Clientes</p>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                        {reporteData?.resumen?.totalClientes || 0}
+                    </h3>
+                    <p className="text-sm text-gray-400 mt-2">Clientes con compras</p>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Productos Vendidos</p>
+                    <h3 className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
+                        {reporteData?.resumen?.totalProductosVendidos || 0}
+                    </h3>
+                    <p className="text-sm text-gray-400 mt-2">Unidades totales</p>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Monto Total</p>
+                    <h3 className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">
+                        Bs. {reporteData?.resumen?.totalMontoVentas?.toFixed(2) || '0.00'}
+                    </h3>
+                    <p className="text-sm text-gray-400 mt-2">Ingresos generados</p>
+                </div>
+            </div>
+
+            {/* Tabla de Clientes */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Detalle por Cliente</h3>
+                    <button 
+                        onClick={() => onExport(exportData, 'Reporte_Clientes')}
+                        className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">download</span>
+                        Exportar CSV
+                    </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th className="px-6 py-3">Cliente</th>
+                                <th className="px-6 py-3">Contacto</th>
+                                <th className="px-6 py-3 text-center">Cant. Productos</th>
+                                <th className="px-6 py-3 text-right">Monto Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                                        Cargando datos...
+                                    </td>
+                                </tr>
+                            ) : reporteData?.clientes?.length > 0 ? (
+                                reporteData.clientes.map((cliente, index) => (
+                                    <tr key={cliente.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                            <div className="flex items-center gap-2">
+                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-xs font-bold">
+                                                    {index + 1}
+                                                </span>
+                                                {cliente.nombre}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-xs">
+                                                {cliente.email && <div>📧 {cliente.email}</div>}
+                                                {cliente.celular && <div>📱 {cliente.celular}</div>}
+                                                {!cliente.email && !cliente.celular && <span className="text-gray-400">Sin contacto</span>}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                                                {cliente.cantidadProductos}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-bold text-emerald-600">
+                                            Bs. {cliente.montoTotal.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                                        No hay datos de clientes en este periodo
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     );
 }
