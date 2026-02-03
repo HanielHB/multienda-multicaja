@@ -329,12 +329,15 @@ export default function Inventario() {
     // Función para exportar a Excel (CSV)
     const exportToExcel = () => {
         const dataToExport = filteredMovimientos.map(mov => ({
-            'Fecha': formatDate(mov.createdAt),
+            'Fecha': new Date(mov.createdAt).toLocaleDateString('es-ES'),
+            'Hora': new Date(mov.createdAt).toLocaleTimeString('es-ES'),
             'Usuario': mov.usuario?.nombres || 'Sistema',
             'Sucursal': mov.almacen?.sucursal?.nombre || 'N/A',
             'Almacén': mov.almacen?.nombre || 'N/A',
             'Movimiento': getMovementTypeDisplay(mov.motivo),
             'Producto': mov.producto?.nombre || 'N/A',
+            'Talla': mov.producto?.talla || '',
+            'Color': mov.producto?.color || '',
             'Tipo': mov.tipo === 'ENTRADA' ? 'Ingreso' : 'Egreso',
             'Cantidad': mov.cantidad
         }));
@@ -383,6 +386,7 @@ export default function Inventario() {
                 <td style="padding: 8px; border: 1px solid #ddd;">${mov.almacen?.nombre || 'N/A'}</td>
                 <td style="padding: 8px; border: 1px solid #ddd;">${getMovementTypeDisplay(mov.motivo)}</td>
                 <td style="padding: 8px; border: 1px solid #ddd;">${mov.producto?.nombre || 'N/A'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${mov.producto?.talla || '-'}</td>
                 <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
                     <span style="background: ${mov.tipo === 'ENTRADA' ? '#d1fae5' : '#fed7aa'}; color: ${mov.tipo === 'ENTRADA' ? '#065f46' : '#92400e'}; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
                         ${mov.tipo === 'ENTRADA' ? 'Ingreso' : 'Egreso'}
@@ -422,6 +426,7 @@ export default function Inventario() {
                             <th>Almacén</th>
                             <th>Movimiento</th>
                             <th>Producto</th>
+                            <th>Talla</th>
                             <th style="text-align: center;">Tipo</th>
                             <th style="text-align: center;">Cantidad</th>
                         </tr>
@@ -584,6 +589,11 @@ export default function Inventario() {
                                 </th>
                                 <th className="p-4">
                                     <div className="flex items-center gap-1 cursor-pointer hover:text-gray-700">
+                                        Talla <span className="material-symbols-outlined text-[14px]">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th className="p-4">
+                                    <div className="flex items-center gap-1 cursor-pointer hover:text-gray-700">
                                         Tipo <span className="material-symbols-outlined text-[14px]">unfold_more</span>
                                     </div>
                                 </th>
@@ -597,7 +607,7 @@ export default function Inventario() {
                         <tbody className="divide-y divide-border-light dark:divide-border-dark">
                             {paginatedMovimientos.length === 0 ? (
                                 <tr>
-                                    <td colSpan="8" className="p-8 text-center text-neutral-gray">
+                                    <td colSpan="9" className="p-8 text-center text-neutral-gray">
                                         <span className="material-symbols-outlined text-4xl mb-2 block">inventory_2</span>
                                         No hay movimientos registrados
                                     </td>
@@ -633,6 +643,12 @@ export default function Inventario() {
                                         <td className="p-4">
                                             <span className="text-sm font-semibold text-gray-900 dark:text-white">
                                                 {mov.producto?.nombre || 'N/A'}
+                                                {mov.producto?.color && <span className="ml-1 text-xs text-gray-500 capitalize">{mov.producto.color}</span>}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                                {mov.producto?.talla || '-'}
                                             </span>
                                         </td>
                                         <td className="p-4">
@@ -775,8 +791,22 @@ export default function Inventario() {
                                                     onClick={() => handleProductSelect(prod)}
                                                     className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-sm"
                                                 >
-                                                    <p className="font-medium text-gray-900 dark:text-white">{prod.nombre}</p>
-                                                    <p className="text-xs text-neutral-gray">{prod.codigoBarras} • Stock: {prod.stock || 0}</p>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-gray-900 dark:text-white">{prod.nombre}</span>
+                                                            {prod.talla && (
+                                                                <span className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                                                                    T: {prod.talla}
+                                                                </span>
+                                                            )}
+                                                            {prod.color && (
+                                                                <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded capitalize">
+                                                                    {prod.color}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-neutral-gray">{prod.codigoBarras} • Stock: {prod.stock || 0}</p>
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -788,7 +818,11 @@ export default function Inventario() {
                                     <div className="flex flex-col gap-1 py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-neutral-gray">Producto:</span>
-                                            <span className="text-sm font-bold text-gray-900 dark:text-white">{productoSeleccionado.nombre}</span>
+                                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                                {productoSeleccionado.nombre}
+                                                {productoSeleccionado.talla && <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-normal">T: {productoSeleccionado.talla}</span>}
+                                                {productoSeleccionado.color && <span className="ml-1 text-xs text-gray-500 font-normal capitalize">{productoSeleccionado.color}</span>}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-neutral-gray">Stock Total:</span>

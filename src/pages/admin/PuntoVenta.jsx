@@ -18,14 +18,11 @@ export default function PuntoVenta() {
     const [numeroFactura, setNumeroFactura] = useState('F001-0');
     const [clienteNombre, setClienteNombre] = useState('cliente');
     const [montoEfectivo, setMontoEfectivo] = useState('');
-    const [ingresoTipo, setIngresoTipo] = useState('efectivo');
     const [ingresoMonto, setIngresoMonto] = useState('');
     const [ingresoMotivo, setIngresoMotivo] = useState('');
     const [retiroMonto, setRetiroMonto] = useState('');
     const [retiroMotivo, setRetiroMotivo] = useState('');
-    const [retiroTipo, setRetiroTipo] = useState('efectivo');
     const [showCerrarCajaModal, setShowCerrarCajaModal] = useState(false);
-    const [showCerrarTurnoModal, setShowCerrarTurnoModal] = useState(false);
     const [efectivoEnCaja, setEfectivoEnCaja] = useState('');
     const [cart, setCart] = useState([]);
 
@@ -35,9 +32,11 @@ export default function PuntoVenta() {
     const [searchCliente, setSearchCliente] = useState('');
     const [showClienteDropdown, setShowClienteDropdown] = useState(false);
 
-    // State for stock alert modal
+    // State for stock alert and Size Selection
     const [showStockModal, setShowStockModal] = useState(false);
     const [stockAlertMessage, setStockAlertMessage] = useState('');
+    const [showSizeModal, setShowSizeModal] = useState(false);
+    const [selectedProductGroup, setSelectedProductGroup] = useState(null); // Group of variants selected
 
     // State for ticket modal
     const [showTicketModal, setShowTicketModal] = useState(false);
@@ -45,7 +44,9 @@ export default function PuntoVenta() {
     const [ventaCompletada, setVentaCompletada] = useState(null);
 
     // State for API data
-    const [productos, setProductos] = useState([]);
+    const [productos, setProductos] = useState([]); // Raw products
+    const [groupedProducts, setGroupedProducts] = useState([]); // Products grouped by name+color
+    
     const [cajaInfo, setCajaInfo] = useState({
         sucursal: 'Cargando...',
         caja: 'Cargando...',
@@ -65,6 +66,48 @@ export default function PuntoVenta() {
         fetchClientes();
         loadCajaInfo();
     }, []);
+
+    // Agrupar productos cuando cambian
+    useEffect(() => {
+        if (productos.length > 0) {
+            groupProducts(productos, searchProduct);
+        } else {
+            setGroupedProducts([]);
+        }
+    }, [productos, searchProduct]);
+
+    const groupProducts = (productsList, searchTerm) => {
+        // Filtrar primero
+        const filtered = productsList.filter(p =>
+            p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        // Agrupar por Nombre + Color
+        const groups = {};
+        filtered.forEach(p => {
+            // Normalizar clave: Nombre-Color
+            const colorKey = p.color ? p.color.trim().toLowerCase() : 'default';
+            const key = `${p.nombre.trim().toLowerCase()}-${colorKey}`;
+            
+            if (!groups[key]) {
+                groups[key] = [];
+            }
+            groups[key].push(p);
+        });
+
+        // Convertir a array y ordenar variantes dentro de cada grupo
+        const groupedArray = Object.values(groups).map(group => {
+            // Ordenar por talla si es posible
+            group.sort((a, b) => {
+                const sizeA = parseFloat(a.talla) || 0;
+                const sizeB = parseFloat(b.talla) || 0;
+                return sizeA - sizeB;
+            });
+            return group;
+        });
+
+        setGroupedProducts(groupedArray);
+    };
 
     const fetchClientes = async () => {
         try {
@@ -100,10 +143,11 @@ export default function PuntoVenta() {
                     stock: parseInt(p.stockActual) || parseInt(p.stock) || 0,
                     imagen: p.imagen,
                     talla: p.talla,
+                    color: p.color,
                     codigoBarras: p.codigoBarras,
                     codigoInterno: p.codigoInterno,
                     icon: getProductIcon(p.categoriaId),
-                    color: getProductColor(p.categoriaId)
+                    colorClass: getProductColor(p.categoriaId)
                 }));
                 setProductos(mapped);
             }
@@ -152,8 +196,7 @@ export default function PuntoVenta() {
             }
         } catch (err) {
             console.error('Error loading caja info:', err);
-            // On error, let's look for safe fallback or redirect
-             navigate('/admin/apertura-cajas');
+            navigate('/admin/apertura-cajas');
         }
     };
 
@@ -199,7 +242,7 @@ export default function PuntoVenta() {
 
         // Validar stock disponible
         if (currentQty >= product.stock) {
-            setStockAlertMessage(`Stock insuficiente. Solo hay ${product.stock} unidades de "${product.nombre}".`);
+            setStockAlertMessage(`Stock insuficiente. Solo hay ${product.stock} unidades de "${product.nombre}" (${product.talla ? 'Talla ' + product.talla : ''}).`);
             setShowStockModal(true);
             return;
         }
@@ -219,6 +262,17 @@ export default function PuntoVenta() {
                 talla: product.talla,
                 cantidad: 1
             }]);
+        }
+    };
+
+    const handleProductClick = (group) => {
+        // Si el grupo solo tiene 1 variante, añadir directamante
+        if (group.length === 1) {
+            addToCart(group[0]);
+        } else {
+            // Si tiene múltiples variantes, mostrar modal de selección
+            setSelectedProductGroup(group);
+            setShowSizeModal(true);
         }
     };
 
@@ -248,8 +302,6 @@ export default function PuntoVenta() {
         setCart([]);
         setMontoEfectivo('');
         setSelectedCliente(null);
-        setVuelto(0);
-        setRestante(0);
     };
 
     // Manejar escaneo de código de barras
@@ -292,8 +344,6 @@ export default function PuntoVenta() {
             const cajaId = localStorage.getItem('cajaActiva');
             const usuarioId = user.id;
 
-            // Enviar saldoCaja como montoFinal, o permitir input del usuario
-            // Por defecto usaremos el saldo calculado por el sistema
             const response = await fetch(`${API_URL}/cajas/${cajaId}/cerrar`, {
                 method: 'POST',
                 headers: {
@@ -301,13 +351,12 @@ export default function PuntoVenta() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    montoFinal: saldoCaja, // O el monto contado por el usuario
+                    montoFinal: efectivoEnCaja ? parseFloat(efectivoEnCaja) : saldoCaja,
                     usuarioId: usuarioId
                 })
             });
 
             if (response.ok) {
-                // Limpiar storage y redirigir
                 localStorage.removeItem('cajaActiva');
                 navigate('/admin/apertura-cajas');
             } else {
@@ -328,21 +377,14 @@ export default function PuntoVenta() {
             scannerRef.current = html5QrCode;
 
             await html5QrCode.start(
-                { facingMode: "environment" }, // Usar cámara trasera en móviles
+                { facingMode: "environment" },
                 {
                     fps: 10,
                     qrbox: { width: 250, height: 250 },
-                    formatsToSupport: [
-                        0,  // CODE_128
-                        1,  // CODE_39
-                        13, // EAN_13
-                        14, // EAN_8
-                        15, // UPC_A
-                        16  // UPC_E
-                    ]
+                    formatsToSupport: [0, 1, 13, 14, 15, 16] // Códigos comunes
                 },
                 (decodedText) => {
-                    // Código detectado exitosamente - buscar producto y agregarlo
+                    // Código detectado
                     const product = productos.find(p => 
                         p.codigoBarras === decodedText || 
                         p.codigoInterno === decodedText
@@ -352,15 +394,12 @@ export default function PuntoVenta() {
                         addToCart(product);
                         stopScanner();
                     } else {
-                        // Si no encuentra el producto, mostrar alerta
                         setStockAlertMessage(`No se encontró un producto con el código: "${decodedText}"`);
                         setShowStockModal(true);
                         stopScanner();
                     }
                 },
-                (errorMessage) => {
-                    // Error de escaneo (normal cuando no detecta nada)
-                }
+                (errorMessage) => { }
             );
         } catch (err) {
             console.error("Error al iniciar escáner:", err);
@@ -402,7 +441,6 @@ export default function PuntoVenta() {
         { id: 'efectivo', label: 'Efectivo', icon: 'payments', color: 'bg-pink-500' },
     ];
 
-    // Handle payment method selection
     const handlePaymentSelect = (methodId) => {
         setSelectedPayment(methodId);
         setShowPaymentModal(true);
@@ -413,14 +451,12 @@ export default function PuntoVenta() {
         }
     };
 
-    // Handle complete payment
     const handleCobrar = async () => {
         try {
             const token = localStorage.getItem('token');
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const cajaId = parseInt(localStorage.getItem('cajaActiva')) || null;
 
-            // Construir items para el backend
             const items = cart.map(item => ({
                 productoId: item.id,
                 nombre: item.nombre,
@@ -457,9 +493,8 @@ export default function PuntoVenta() {
             if (response.ok) {
                 const result = await response.json();
 
-                // Guardar datos de la venta para el ticket
                 setVentaCompletada({
-                    numeroDocumento: numeroFactura,
+                    numeroDocumento: numeroFactura, // Debería venir del backend idealmente
                     tipoDocumento: tipoDocumento,
                     fecha: new Date(),
                     cliente: selectedCliente?.nombre || clienteNombre,
@@ -483,18 +518,18 @@ export default function PuntoVenta() {
 
                 setShowPaymentModal(false);
                 setShowVentaExitosaModal(true);
-                // Actualizar saldo de caja con el total de la venta
-                // Actualizar saldo de caja con el total de la venta (Solo si es EFECTIVO)
+                
                 if (selectedPayment === 'efectivo') {
                     setSaldoCaja(prev => prev + total);
                 }
-                fetchProductos(); // Actualizar stock de productos
+                fetchProductos(); 
                 setCart([]);
                 setMontoEfectivo('');
+                setSelectedPayment(null);
                 setSelectedCliente(null);
                 setClienteNombre('');
                 setSearchCliente('');
-                // Incrementar número de factura (simple)
+                
                 const numParts = numeroFactura.split('-');
                 const nextNum = parseInt(numParts[1] || 0) + 1;
                 setNumeroFactura(`${numParts[0]}-${nextNum}`);
@@ -508,56 +543,21 @@ export default function PuntoVenta() {
         }
     };
 
-    // Filter products based on search
-    const filteredProducts = productos.filter(p =>
-        p.nombre.toLowerCase().includes(searchProduct.toLowerCase())
-    );
-
-    // Get selected payment method info
     const selectedPaymentInfo = paymentMethods.find(m => m.id === selectedPayment);
 
     return (
         <div className="flex flex-col h-[calc(100vh-80px)] -m-6 lg:-m-10 bg-slate-100 dark:bg-gray-950">
             {/* CSS Animations */}
             <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(-20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideRight {
-          from { opacity: 0; transform: translateX(100%); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.9); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.02); }
-        }
-        @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          25% { transform: scale(1.1); }
-          50% { transform: scale(1); }
-          75% { transform: scale(1.1); }
-        }
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
-          50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.6); }
-        }
-        @keyframes borderPulse {
-          0%, 100% { border-color: rgba(236, 72, 153, 0.3); }
-          50% { border-color: rgba(236, 72, 153, 0.8); }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+        @keyframes heartbeat { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.1); } 50% { transform: scale(1); } 75% { transform: scale(1.1); } }
+        @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); } 50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.6); } }
+        @keyframes borderPulse { 0%, 100% { border-color: rgba(236, 72, 153, 0.3); } 50% { border-color: rgba(236, 72, 153, 0.8); } }
         .page-animate { animation: fadeIn 0.3s ease-out; }
         .slide-in { animation: slideIn 0.4s ease-out; }
         .slide-up { animation: slideUp 0.4s ease-out; }
@@ -648,62 +648,13 @@ export default function PuntoVenta() {
                                 <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
                             </button>
                         </div>
-
-                        {/* Search Results Dropdown - Solo aparece al escribir */}
-                        {searchProduct.length > 0 && (
-                            <div className="absolute left-4 right-4 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-64 overflow-y-auto z-20">
-                                {filteredProducts.length === 0 ? (
-                                    <div className="p-3 text-center text-gray-500 text-sm">
-                                        No se encontraron productos
-                                    </div>
-                                ) : (
-                                    filteredProducts.map(product => (
-                                        <button
-                                            key={product.id}
-                                            onClick={() => {
-                                                addToCart(product);
-                                                setSearchProduct('');
-                                            }}
-                                            className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                                        >
-                                            <div className={`w-10 h-10 flex-shrink-0 ${product.imagen ? 'bg-transparent' : product.color} rounded-lg flex items-center justify-center overflow-hidden`}>
-                                                {product.imagen ? (
-                                                    <img 
-                                                        src={product.imagen} 
-                                                        alt={product.nombre}
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            e.target.style.display = 'none';
-                                                            e.target.nextSibling.style.display = 'flex';
-                                                        }}
-                                                    />
-                                                ) : null}
-                                                <div className={`w-full h-full ${product.color} flex items-center justify-center text-white`} style={{ display: product.imagen ? 'none' : 'flex' }}>
-                                                     <span className="material-symbols-outlined text-sm">{product.icon}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.nombre}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-xs text-emerald-600 font-bold">Bs. {product.precio.toFixed(2)}</p>
-                                                    {product.talla && (
-                                                        <span className="text-xs text-gray-500">• Talla: <span className="font-semibold">{product.talla}</span></span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <span className="material-symbols-outlined text-emerald-500 text-lg">add_circle</span>
-                                        </button>
-                                    ))
-                                )}
-                            </div>
-                        )}
                     </div>
 
                     {/* Cart Items */}
                     <div className="flex-1 overflow-y-auto">
                         {cart.map((item, index) => (
                             <div
-                                key={item.id}
+                                key={`${item.id}-${index}`}
                                 className="cart-item border-b border-gray-100 dark:border-gray-800 p-4 transition-colors"
                                 style={{ animationDelay: `${index * 0.1}s` }}
                             >
@@ -721,7 +672,6 @@ export default function PuntoVenta() {
                                     </div>
                                 </div>
 
-                                {/* Quantity Controls & Total */}
                                 <div className="flex items-center justify-between mt-2">
                                     <div className="flex items-center gap-1.5">
                                         <button
@@ -768,11 +718,16 @@ export default function PuntoVenta() {
                 {/* Center - Products Grid */}
                 <main className="flex-1 bg-slate-50 dark:bg-gray-900/50 p-4 overflow-y-auto">
                     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filteredProducts.map((product, index) => (
+                        {groupedProducts.map((group, index) => {
+                            const product = group[0]; // Producto representante del grupo
+                            const totalStock = group.reduce((acc, p) => acc + p.stock, 0);
+                            const hasVariants = group.length > 1;
+
+                            return (
                             <button
-                                key={product.id}
-                                onClick={() => addToCart(product)}
-                                className="product-card scale-in bg-white dark:bg-gray-800 rounded-xl p-4 text-left shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer"
+                                key={`${product.id}-group`}
+                                onClick={() => handleProductClick(group)}
+                                className="product-card scale-in bg-white dark:bg-gray-800 rounded-xl p-4 text-left shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer relative"
                                 style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }}
                             >
                                 <div className={`w-full aspect-square rounded-xl bg-gray-50 dark:bg-gray-700/50 mb-3 overflow-hidden flex items-center justify-center relative shadow-sm`}>
@@ -787,11 +742,11 @@ export default function PuntoVenta() {
                                             }}
                                         />
                                     ) : null}
-                                    <div className={`w-full h-full flex items-center justify-center text-white ${product.color}`} style={{ display: product.imagen ? 'none' : 'flex' }}>
+                                    <div className={`w-full h-full flex items-center justify-center text-white ${product.colorClass}`} style={{ display: product.imagen ? 'none' : 'flex' }}>
                                         <span className="material-symbols-outlined text-5xl opacity-80">{product.icon}</span>
                                     </div>
-                                    <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-[10px] font-bold text-white shadow-sm ${product.stock > 10 ? 'bg-emerald-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
-                                        {product.stock}
+                                    <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-[10px] font-bold text-white shadow-sm ${totalStock > 10 ? 'bg-emerald-500' : totalStock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
+                                        {totalStock} {hasVariants ? 'total' : ''}
                                     </div>
                                 </div>
                                 <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">{product.nombre}</h3>
@@ -799,17 +754,25 @@ export default function PuntoVenta() {
                                     <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                                         Bs. {product.precio.toFixed(2)}
                                     </p>
-                                    {product.talla && (
-                                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                                            {product.talla}
-                                        </p>
+                                    
+                                    {hasVariants ? (
+                                         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                                            <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{group.length} tallas</span>
+                                            <span className="material-symbols-outlined text-[12px] text-gray-500">grid_view</span>
+                                         </div>
+                                    ) : (
+                                        product.talla && (
+                                            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                                {product.talla}
+                                            </p>
+                                        )
                                     )}
                                 </div>
                             </button>
-                        ))}
+                        )})}
                     </div>
 
-                    {filteredProducts.length === 0 && (
+                    {groupedProducts.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                             <span className="material-symbols-outlined text-6xl mb-3">search_off</span>
                             <p className="text-lg font-medium">No se encontraron productos</p>
@@ -862,7 +825,7 @@ export default function PuntoVenta() {
                     </div>
                 </aside>
 
-                {/* Payment Modal */}
+                 {/* Payment Modal */}
             {
                 showPaymentModal && !showCerrarCajaModal && (
                     <div className="absolute inset-0 z-50 flex items-stretch">
@@ -905,7 +868,6 @@ export default function PuntoVenta() {
                                             }}
                                             onFocus={() => setShowClienteDropdown(true)}
                                             onBlur={() => {
-                                                // Si escribió algo pero no seleccionó un cliente, usar como nombre invitado
                                                 setTimeout(() => {
                                                     if (!selectedCliente && searchCliente.trim()) {
                                                         setClienteNombre(searchCliente.trim());
@@ -970,32 +932,6 @@ export default function PuntoVenta() {
                                                     </button>
                                                 ))
                                             }
-                                            
-                                            {/* Opción para usar como cliente invitado cuando no hay resultados */}
-                                            {searchCliente.trim() && clientes.filter(c =>
-                                                !searchCliente ||
-                                                c.nombre?.toLowerCase().includes(searchCliente.toLowerCase()) ||
-                                                c.nroDocumento?.includes(searchCliente) ||
-                                                c.celular?.includes(searchCliente)
-                                            ).length === 0 && (
-                                                <button
-                                                    onClick={() => {
-                                                        setClienteNombre(searchCliente.trim());
-                                                        setShowClienteDropdown(false);
-                                                    }}
-                                                    className="w-full px-4 py-3 text-left bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-t border-blue-200 dark:border-blue-800 transition-colors"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="material-symbols-outlined text-blue-500">person_add</span>
-                                                        <div>
-                                                            <div className="font-medium text-blue-600 dark:text-blue-400">
-                                                                Usar "{searchCliente}" como cliente
-                                                            </div>
-                                                            <div className="text-xs text-blue-500 dark:text-blue-400">No se guardará en la base de datos</div>
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1343,8 +1279,6 @@ export default function PuntoVenta() {
                     <span className="material-symbols-outlined text-blue-500 text-[16px]">account_balance_wallet</span>
                     <span className="text-xs font-medium text-gray-600 dark:text-gray-400">En caja:</span>
                     <span className="text-sm font-bold text-blue-600 dark:text-blue-400">Bs. {saldoCaja.toFixed(2)}</span>
-
-
                 </div>
             </footer >
 
@@ -1476,51 +1410,85 @@ export default function PuntoVenta() {
                 )
             }
 
-            {/* Modal Venta Exitosa */}
+            {/* Modal Selección de Tallas */}
             {
-                showVentaExitosaModal && ventaCompletada && (
+                showSizeModal && selectedProductGroup && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <div
                             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                            onClick={() => setShowVentaExitosaModal(false)}
+                            onClick={() => setShowSizeModal(false)}
                         />
-                        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-sm w-full scale-in">
-                            <div className="flex flex-col items-center text-center">
-                                {/* Success Icon */}
-                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
-                                    <span className="material-symbols-outlined text-5xl text-white">check</span>
+                        <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-md w-full scale-in">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                        Selecciona una talla
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {selectedProductGroup[0].nombre} {selectedProductGroup[0].color && `- ${selectedProductGroup[0].color}`}
+                                    </p>
                                 </div>
+                                <button
+                                    onClick={() => setShowSizeModal(false)}
+                                    className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-white transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-xl">close</span>
+                                </button>
+                            </div>
 
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Venta Exitosa!</h3>
-                                <p className="text-gray-500 dark:text-gray-400 mb-2">
-                                    {ventaCompletada.tipoDocumento.charAt(0).toUpperCase() + ventaCompletada.tipoDocumento.slice(1)}: <span className="font-bold text-primary">{ventaCompletada.numeroDocumento}</span>
-                                </p>
-                                <p className="text-3xl font-bold text-emerald-500 mb-6">Bs. {ventaCompletada.total.toFixed(2)}</p>
-
-                                {/* Buttons */}
-                                <div className="w-full space-y-3">
+                            <div className="grid grid-cols-3 gap-3">
+                                {selectedProductGroup.map((variant) => (
                                     <button
+                                        key={variant.id}
                                         onClick={() => {
-                                            setShowVentaExitosaModal(false);
-                                            setShowTicketModal(true);
+                                            addToCart(variant);
+                                            setShowSizeModal(false);
                                         }}
-                                        className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
+                                        disabled={variant.stock === 0}
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
+                                            variant.stock > 0
+                                                ? 'border-gray-200 dark:border-gray-700 hover:border-primary hover:bg-primary/5 cursor-pointer'
+                                                : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 opacity-60 cursor-not-allowed'
+                                        }`}
                                     >
-                                        <span className="material-symbols-outlined">receipt_long</span>
-                                        Ver e Imprimir Ticket
+                                        <span className="text-lg font-bold text-gray-800 dark:text-white">
+                                            {variant.talla || 'Única'}
+                                        </span>
+                                        <span className={`text-xs font-medium ${
+                                            variant.stock > 5 ? 'text-emerald-500' : 
+                                            variant.stock > 0 ? 'text-amber-500' : 'text-red-500'
+                                        }`}>
+                                            Stock: {variant.stock}
+                                        </span>
                                     </button>
-                                    <button
-                                        onClick={() => setShowVentaExitosaModal(false)}
-                                        className="w-full py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-                                    >
-                                        Cerrar
-                                    </button>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     </div>
                 )
             }
+
+            {/* Modal Venta Exitosa y Ticket (igual que antes, simplificado para ahorrar espacio en la vista) */}
+            {showVentaExitosaModal && ventaCompletada && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowVentaExitosaModal(false)} />
+                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-sm w-full scale-in text-center">
+                         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30 mx-auto">
+                            <span className="material-symbols-outlined text-5xl text-white">check</span>
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Venta Exitosa!</h3>
+                        <p className="text-3xl font-bold text-emerald-500 mb-6">Bs. {ventaCompletada.total.toFixed(2)}</p>
+                        <div className="space-y-3">
+                            <button onClick={() => { setShowVentaExitosaModal(false); setShowTicketModal(true); }} className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-all">
+                                Ver Ticket
+                            </button>
+                            <button onClick={() => setShowVentaExitosaModal(false)} className="w-full py-3 rounded-xl border-2 border-gray-300 font-bold hover:bg-gray-50 transition-all">
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Ticket de Venta */}
             {
@@ -1545,8 +1513,8 @@ export default function PuntoVenta() {
                                     <p className="font-bold capitalize">{ventaCompletada.tipoDocumento}</p>
                                     <p className="text-primary font-bold">{ventaCompletada.numeroDocumento}</p>
                                     <div className="flex justify-between text-xs mt-2">
-                                        <span><strong>FECHA:</strong> {ventaCompletada.fecha.toLocaleDateString('es-ES')}</span>
-                                        <span><strong>HORA:</strong> {ventaCompletada.fecha.toLocaleTimeString('es-ES')}</span>
+                                        <span><strong>FECHA:</strong> {new Date(ventaCompletada.fecha).toLocaleDateString('es-ES')}</span>
+                                        <span><strong>HORA:</strong> {new Date(ventaCompletada.fecha).toLocaleTimeString('es-ES')}</span>
                                     </div>
                                     <p className="text-xs mt-1"><strong>CAJERO:</strong> {ventaCompletada.vendedor}</p>
                                 </div>
@@ -1598,141 +1566,75 @@ export default function PuntoVenta() {
                                 </div>
 
                                 {/* Payment Info */}
-                                <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4 text-center">
-                                    <p className="font-bold text-sm">FORMA DE PAGO:</p>
-                                    <div className="flex justify-between text-sm mt-1">
-                                        <span className="capitalize">{ventaCompletada.metodoPago}: Bs.</span>
-                                        <span>{ventaCompletada.montoRecibido.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span>Cambio: Bs.</span>
-                                        <span>{ventaCompletada.vuelto.toFixed(2)}</span>
-                                    </div>
+                                <div className="border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                                    {ventaCompletada.metodoPago === 'efectivo' ? (
+                                        <>
+                                            <div className="flex justify-between text-xs">
+                                                <span>EFECTIVO:</span>
+                                                <span>{ventaCompletada.montoRecibido ? ventaCompletada.montoRecibido.toFixed(2) : ventaCompletada.total.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span>CAMBIO:</span>
+                                                <span>{ventaCompletada.vuelto ? ventaCompletada.vuelto.toFixed(2) : '0.00'}</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex justify-between text-xs">
+                                            <span className="uppercase">{ventaCompletada.metodoPago === 'qr' ? 'PAGO QR' : ventaCompletada.metodoPago}:</span>
+                                            <span>{ventaCompletada.total.toFixed(2)}</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Footer */}
-                                <div className="text-center text-xs text-gray-500">
+                                <div className="text-center text-xs text-gray-500 mt-4">
                                     <p>¡Gracias por su compra!</p>
-                                    <p className="mt-2">{ventaCompletada.sucursal} - {ventaCompletada.caja}</p>
+                                    <p>Por favor conserve este ticket para cualquier reclamo.</p>
                                 </div>
                             </div>
-
-                            {/* Action Buttons */}
-                            <div className="p-4 border-t border-gray-200 flex gap-3 print:hidden">
-                                <button
-                                    onClick={() => setShowTicketModal(false)}
-                                    className="flex-1 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-all"
-                                >
-                                    Cerrar
-                                </button>
+                            
+                            {/* Actions */}
+                            <div className="p-4 bg-gray-50 border-t flex gap-3 sticky bottom-0">
                                 <button
                                     onClick={() => {
-                                        const ticketContent = document.getElementById('ticket-print').innerHTML;
-                                        const printWindow = window.open('', '_blank', 'width=300,height=600');
-                                        printWindow.document.write(`
+                                      const printContent = document.getElementById('ticket-print');
+                                      const win = window.open('', '', 'width=800,height=600');
+                                      win.document.write(`
                                         <html>
-                                            <head>
-                                                <title>Ticket de Venta</title>
-                                                <style>
-                                                    @page {
-                                                        size: 80mm auto;
-                                                        margin: 0;
-                                                    }
-                                                    * { 
-                                                        margin: 0; 
-                                                        padding: 0; 
-                                                        box-sizing: border-box; 
-                                                        font-family: 'Courier New', monospace; 
-                                                    }
-                                                    body { 
-                                                        width: 80mm;
-                                                        max-width: 80mm;
-                                                        padding: 5mm;
-                                                        font-size: 10px;
-                                                        line-height: 1.4;
-                                                    }
-                                                    .text-center { text-align: center; }
-                                                    .font-bold { font-weight: bold; }
-                                                    .text-xs { font-size: 9px; }
-                                                    .text-sm { font-size: 10px; }
-                                                    .text-lg { font-size: 12px; }
-                                                    .border-b-2, .border-dashed, .border-b, .border-2 { border: none; }
-                                                    .border-gray-300, .border-gray-800 { border: none; }
-                                                    .pb-4 { padding-bottom: 8px; }
-                                                    .mb-4 { margin-bottom: 8px; }
-                                                    .mb-2 { margin-bottom: 4px; }
-                                                    .mb-1 { margin-bottom: 2px; }
-                                                    .mt-2 { margin-top: 4px; }
-                                                    .mt-1 { margin-top: 2px; }
-                                                    .p-6 { padding: 0; }
-                                                    .flex { display: flex; }
-                                                    .justify-between { justify-content: space-between; }
-                                                    .capitalize { text-transform: capitalize; }
-                                                    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                                                    .text-primary { color: #000; }
-                                                    .text-gray-500, .text-gray-600, .text-gray-400 { color: #333; }
-                                                    .w-1\\/2 { width: 50%; }
-                                                    .w-1\\/6 { width: 16.666%; }
-                                                    .text-right { text-align: right; }
-                                                    .inline-block { display: inline-block; }
-                                                    .px-4 { padding-left: 8px; padding-right: 8px; }
-                                                    .py-2 { padding-top: 4px; padding-bottom: 4px; }
-                                                    .pb-1 { padding-bottom: 2px; }
-                                                </style>
-                                            </head>
-                                            <body>${ticketContent}</body>
+                                          <head>
+                                            <title>Imprimir Ticket</title>
+                                            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+                                            <style>
+                                              body { font-family: 'Courier New', monospace; padding: 20px; }
+                                              .no-print { display: none; }
+                                            </style>
+                                          </head>
+                                          <body>
+                                            ${printContent.innerHTML}
+                                            <script>
+                                              window.onload = function() { window.print(); window.close(); }
+                                            </script>
+                                          </body>
                                         </html>
-                                    `);
-                                        printWindow.document.close();
-                                        printWindow.focus();
-                                        printWindow.print();
-                                        printWindow.close();
+                                      `);
+                                      win.document.close();
                                     }}
-                                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:from-primary/90 hover:to-blue-700 transition-all"
+                                    className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-colors"
                                 >
-                                    <span className="material-symbols-outlined text-lg">print</span>
+                                    <span className="material-symbols-outlined">print</span>
                                     Imprimir
+                                </button>
+                                <button
+                                    onClick={() => setShowTicketModal(false)}
+                                    className="px-6 py-3 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-100 transition-colors"
+                                >
+                                    Cerrar
                                 </button>
                             </div>
                         </div>
                     </div>
                 )
             }
-
-            {/* Scanner Modal */}
-            {showScannerModal && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-primary to-blue-600 p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-white">
-                                <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
-                                <h3 className="font-bold text-lg">Escanear Código de Barras</h3>
-                            </div>
-                            <button
-                                onClick={stopScanner}
-                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
-                            >
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
-                        </div>
-
-                        {/* Scanner Area */}
-                        <div className="p-4">
-                            <div 
-                                id="barcode-reader-pos" 
-                                className="rounded-lg overflow-hidden border-4 border-primary/20"
-                            ></div>
-                            <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-3">
-                                Coloca el código de barras frente a la cámara
-                            </p>
-                            <p className="text-center text-xs text-primary mt-1 font-medium">
-                                El producto se agregará automáticamente al carrito
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div >
+        </div>
     );
 }

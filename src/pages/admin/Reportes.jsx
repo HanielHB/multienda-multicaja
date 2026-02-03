@@ -856,6 +856,7 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                 <th className="px-4 py-3 text-right text-blue-600">Ingresos</th>
                                 <th className="px-4 py-3 text-right text-red-600">Retiros</th>
                                 <th className="px-4 py-3 text-right font-bold">Total Vendido</th>
+                                <th className="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">Saldo Sistema</th>
                                 <th className="px-4 py-3 text-center">Cierre de Caja</th>
                             </tr>
                         </thead>
@@ -908,6 +909,9 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                     <td className="px-4 py-4 text-right font-black text-gray-900 dark:text-white">
                                         Bs. {sesion.totalVendido.toFixed(2)}
                                     </td>
+                                    <td className="px-4 py-4 text-right font-bold text-gray-600 dark:text-gray-300">
+                                        Bs. {(sesion.saldoTeorico || 0).toFixed(2)}
+                                    </td>
                                     <td className="px-4 py-4 text-center">
                                         {sesion.estado === 'ABIERTA' ? (
                                             <span className="text-gray-400 text-xs italic">
@@ -941,7 +945,7 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                             ))}
                              {sesiones.length === 0 && (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
                                         No hay movimientos de caja en este periodo.
                                     </td>
                                 </tr>
