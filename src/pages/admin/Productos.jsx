@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function Productos() {
     const [productos, setProductos] = useState([]);
@@ -36,22 +35,22 @@ export default function Productos() {
     const filteredProducts = productos.filter(producto => {
         // Filtro de búsqueda
         const searchLower = searchTerm.toLowerCase();
-        const matchesSearch = !searchTerm || 
+        const matchesSearch = !searchTerm ||
             producto.nombre?.toLowerCase().includes(searchLower) ||
             producto.codigoBarras?.toLowerCase().includes(searchLower) ||
             producto.codigoInterno?.toLowerCase().includes(searchLower) ||
             producto.categoria?.nombre?.toLowerCase().includes(searchLower);
 
         // Filtro de categoría
-        const matchesCategory = !categoryFilter || 
+        const matchesCategory = !categoryFilter ||
             producto.categoriaId?.toString() === categoryFilter;
 
         // Filtro de estado de stock
-        const matchesStock = !stockFilter || 
+        const matchesStock = !stockFilter ||
             getStockStatusValue(producto) === stockFilter;
 
         // Filtro de sucursal
-        const matchesSucursal = !sucursalFilter || 
+        const matchesSucursal = !sucursalFilter ||
             producto.sucursalId?.toString() === sucursalFilter;
 
         return matchesSearch && matchesCategory && matchesStock && matchesSucursal;
@@ -223,17 +222,17 @@ export default function Productos() {
             'Talla': producto.talla || 'N/A',
             'Color': producto.color || 'N/A',
             'Stock': producto.stockActual ?? producto.stock ?? 0,
-            'Estado': getStockStatusValue(producto) === 'in_stock' ? 'En Stock' : 
-                     getStockStatusValue(producto) === 'low_stock' ? 'Bajo Stock' : 'Agotado'
+            'Estado': getStockStatusValue(producto) === 'in_stock' ? 'En Stock' :
+                getStockStatusValue(producto) === 'low_stock' ? 'Bajo Stock' : 'Agotado'
         }));
 
         // Crear CSV con punto y coma (;) como delimitador para Excel
         const headers = Object.keys(dataToExport[0] || {});
         const csvRows = [];
-        
+
         // Agregar encabezados
         csvRows.push(headers.join(';'));
-        
+
         // Agregar datos - escapar campos con comillas si contienen caracteres especiales
         dataToExport.forEach(row => {
             const values = headers.map(header => {
@@ -366,7 +365,7 @@ export default function Productos() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <button 
+                        <button
                             onClick={() => setShowExportMenu(!showExportMenu)}
                             className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all"
                         >
@@ -414,7 +413,7 @@ export default function Productos() {
                     />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                    <select 
+                    <select
                         className="px-4 py-2.5 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer min-w-[140px]"
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
@@ -424,7 +423,7 @@ export default function Productos() {
                             <option key={cat.id} value={cat.id}>{cat.nombre}</option>
                         ))}
                     </select>
-                    <select 
+                    <select
                         className="px-4 py-2.5 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer min-w-[140px]"
                         value={stockFilter}
                         onChange={(e) => setStockFilter(e.target.value)}
@@ -434,7 +433,7 @@ export default function Productos() {
                         <option value="low_stock">Stock Bajo</option>
                         <option value="out_of_stock">Agotado</option>
                     </select>
-                    <select 
+                    <select
                         className="px-4 py-2.5 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer min-w-[160px]"
                         value={sucursalFilter}
                         onChange={(e) => setSucursalFilter(e.target.value)}
@@ -483,8 +482,8 @@ export default function Productos() {
                                                     {/* Imagen del producto */}
                                                     <div className="size-12 rounded-lg bg-background-light dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
                                                         {producto.imagen ? (
-                                                            <img 
-                                                                src={producto.imagen} 
+                                                            <img
+                                                                src={producto.imagen}
                                                                 alt={producto.nombre}
                                                                 className="w-full h-full object-cover"
                                                                 onError={(e) => {
@@ -493,7 +492,7 @@ export default function Productos() {
                                                                 }}
                                                             />
                                                         ) : null}
-                                                        <span 
+                                                        <span
                                                             className="material-symbols-outlined text-neutral-gray"
                                                             style={{ display: producto.imagen ? 'none' : 'block' }}
                                                         >
@@ -581,14 +580,14 @@ export default function Productos() {
                         )}
                     </span>
                     <div className="flex items-center gap-2">
-                        <button 
+                        <button
                             onClick={goToPreviousPage}
                             disabled={currentPage === 1}
                             className="p-2 rounded-lg border border-border-light dark:border-border-dark text-neutral-gray dark:text-gray-400 hover:bg-background-light dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <span className="material-symbols-outlined text-[20px]">chevron_left</span>
                         </button>
-                        <button 
+                        <button
                             onClick={goToNextPage}
                             disabled={currentPage === totalPages || totalPages === 0}
                             className="p-2 rounded-lg border border-border-light dark:border-border-dark text-neutral-gray dark:text-gray-400 hover:bg-background-light dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -603,7 +602,7 @@ export default function Productos() {
             {showDeleteModal && productoToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     {/* Backdrop */}
-                    <div 
+                    <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                         onClick={closeDeleteModal}
                     />

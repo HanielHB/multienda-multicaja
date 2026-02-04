@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function AddProducto() {
     const navigate = useNavigate();
@@ -16,7 +15,7 @@ export default function AddProducto() {
 
     // Ref for barcode input
     const codigoBarrasRef = useRef(null);
-    
+
     // State for camera scanner
     const [showScannerModal, setShowScannerModal] = useState(false);
     const [scanning, setScanning] = useState(false);
@@ -70,13 +69,13 @@ export default function AddProducto() {
 
         const nuevasVariantes = tallasSeleccionadas.map(talla => {
             const existente = variantes.find(v => v.talla === talla);
-            return existente || { 
-                talla, 
-                stock: 0, 
-                codigoBarras: '' 
+            return existente || {
+                talla,
+                stock: 0,
+                codigoBarras: ''
             };
         });
-        
+
         // Ordenar por talla numéricamente si es posible
         nuevasVariantes.sort((a, b) => parseInt(a.talla) - parseInt(b.talla));
         setVariantes(nuevasVariantes);
@@ -108,7 +107,7 @@ export default function AddProducto() {
                     stock: producto.stock || 0,
                     stockMinimo: producto.stockMinimo || 5
                 });
-                
+
                 // Guardar imagen actual si existe
                 if (producto.imagen) {
                     setImagenActual(producto.imagen);
@@ -242,7 +241,7 @@ export default function AddProducto() {
 
     const validateForm = () => {
         const errors = {};
-        
+
         if (!formData.nombre.trim()) {
             errors.nombre = 'El nombre del producto es requerido';
         }
@@ -274,7 +273,7 @@ export default function AddProducto() {
             }
         } else {
             // Edición simple
-             if (!formData.talla || !formData.talla.trim()) {
+            if (!formData.talla || !formData.talla.trim()) {
                 errors.talla = 'La talla es requerida';
             }
             if (!formData.codigoBarras || !formData.codigoBarras.trim()) {
@@ -284,7 +283,7 @@ export default function AddProducto() {
                 errors.codigoInterno = 'El código interno es requerido';
             }
         }
-        
+
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -327,7 +326,7 @@ export default function AddProducto() {
                 (decodedText) => {
                     // Código detectado exitosamente
                     if (activeScannerField === 'main') {
-                         setFormData(prev => ({
+                        setFormData(prev => ({
                             ...prev,
                             codigoBarras: decodedText
                         }));
@@ -377,12 +376,12 @@ export default function AddProducto() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        
+
         // Validate form before submission
         if (!validateForm()) {
             return;
         }
-        
+
         setLoading(true);
 
         try {
@@ -398,7 +397,7 @@ export default function AddProducto() {
             formDataToSend.append('precioCompra', formData.precioCompra);
             formDataToSend.append('precioVenta', formData.precioVenta);
             formDataToSend.append('stockMinimo', formData.stockMinimo || 5);
-            
+
             if (isEditing) {
                 // Modo Edición Simple
                 formDataToSend.append('talla', formData.talla);
@@ -408,15 +407,15 @@ export default function AddProducto() {
             } else {
                 // Modo Creación (Múltiple o Simple)
                 if (variantes.length > 0) {
-                     // Enviar variantes como JSON string
+                    // Enviar variantes como JSON string
                     formDataToSend.append('variantes', JSON.stringify(variantes));
                     formDataToSend.append('codigoInternoBase', formData.codigoInterno); // Para generar códigos internos secuenciales
                 } else {
-                     // Fallback por si acaso (aunque validación lo impide)
-                     throw new Error("Debe seleccionar al menos una variante");
+                    // Fallback por si acaso (aunque validación lo impide)
+                    throw new Error("Debe seleccionar al menos una variante");
                 }
             }
-            
+
             // Agregar imagen si se seleccionó una nueva
             if (imagenFile) {
                 formDataToSend.append('imagen', imagenFile);
@@ -515,7 +514,7 @@ export default function AddProducto() {
                             placeholder="Ej. Zapatillas Deportivas Air Run"
                             type="text"
                         />
-                         {fieldErrors.nombre && (
+                        {fieldErrors.nombre && (
                             <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>
                                 {fieldErrors.nombre}
@@ -530,16 +529,16 @@ export default function AddProducto() {
                             {/* Preview de imagen */}
                             <div className="size-24 rounded-lg border-2 border-dashed border-border-light dark:border-border-dark bg-background-light dark:bg-gray-800 flex items-center justify-center overflow-hidden">
                                 {imagenPreview ? (
-                                    <img 
-                                        src={imagenPreview.startsWith('data:') ? imagenPreview : imagenPreview} 
-                                        alt="Preview" 
+                                    <img
+                                        src={imagenPreview.startsWith('data:') ? imagenPreview : imagenPreview}
+                                        alt="Preview"
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
                                     <span className="material-symbols-outlined text-neutral-gray text-3xl">image</span>
                                 )}
                             </div>
-                            
+
                             {/* Input de archivo */}
                             <div className="flex-1">
                                 <input
@@ -590,7 +589,7 @@ export default function AddProducto() {
                                 <option key={cat.id} value={cat.id}>{cat.nombre}</option>
                             ))}
                         </select>
-                         {fieldErrors.categoriaId && (
+                        {fieldErrors.categoriaId && (
                             <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>
                                 {fieldErrors.categoriaId}
@@ -598,8 +597,8 @@ export default function AddProducto() {
                         )}
                     </div>
 
-                     {/* Color */}
-                     <div className="col-span-1">
+                    {/* Color */}
+                    <div className="col-span-1">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color *</label>
                         <input
                             name="color"
@@ -609,7 +608,7 @@ export default function AddProducto() {
                             placeholder="Ej. Negro, Blanco, Rojo"
                             type="text"
                         />
-                         {fieldErrors.color && (
+                        {fieldErrors.color && (
                             <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>
                                 {fieldErrors.color}
@@ -618,10 +617,10 @@ export default function AddProducto() {
                     </div>
 
                     {/* Selección de Tallas (MULTIPLE) */}
-                     <div className="col-span-1 md:col-span-2">
+                    <div className="col-span-1 md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selección de Tallas *</label>
                         {isEditing ? (
-                             <input
+                            <input
                                 name="talla"
                                 value={formData.talla}
                                 disabled
@@ -634,11 +633,10 @@ export default function AddProducto() {
                                         key={size}
                                         type="button"
                                         onClick={() => toggleTalla(size.toString())}
-                                        className={`w-10 h-10 rounded-full border flex items-center justify-center text-sm font-bold transition-all ${
-                                            tallasSeleccionadas.includes(size.toString())
+                                        className={`w-10 h-10 rounded-full border flex items-center justify-center text-sm font-bold transition-all ${tallasSeleccionadas.includes(size.toString())
                                                 ? 'bg-primary text-white border-primary shadow-md transform scale-105'
                                                 : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-primary hover:text-primary'
-                                        }`}
+                                            }`}
                                     >
                                         {size}
                                     </button>
@@ -695,7 +693,7 @@ export default function AddProducto() {
                                                             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1.5 focus:border-primary"
                                                             placeholder="Código único"
                                                         />
-                                                        <button 
+                                                        <button
                                                             type="button"
                                                             onClick={() => handleScannerClick(index)} // Pass index to identify row
                                                             className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-100 rounded-md transition-colors"
@@ -728,7 +726,7 @@ export default function AddProducto() {
                                 type="number"
                             />
                         </div>
-                         {fieldErrors.precioCompra && (
+                        {fieldErrors.precioCompra && (
                             <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>
                                 {fieldErrors.precioCompra}
@@ -761,7 +759,7 @@ export default function AddProducto() {
 
                     {/* Campos Específicos Globales (Solo Edición o Single) */}
                     {isEditing && (
-                         <>
+                        <>
                             <div className="col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código de Barras *</label>
                                 <div className="flex gap-2">
@@ -774,8 +772,8 @@ export default function AddProducto() {
                                         placeholder="Escaneé o ingrese código"
                                         type="text"
                                     />
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         onClick={() => handleScannerClick('main')}
                                         className="p-2 text-primary hover:text-primary/80 border border-primary dark:border-primary rounded-lg hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"
                                         title="Activar escáner de código de barras"
@@ -805,7 +803,7 @@ export default function AddProducto() {
                                     min="0"
                                 />
                             </div>
-                         </>
+                        </>
                     )}
 
                     {/* Código Interno Base */}
@@ -831,7 +829,7 @@ export default function AddProducto() {
                             </button>
                         </div>
                         {!isEditing && <p className="text-xs text-neutral-gray mt-1">Se usará como base para generar códigos secuenciales (ej: ZAP-001-38).</p>}
-                         {fieldErrors.codigoInterno && (
+                        {fieldErrors.codigoInterno && (
                             <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>
                                 {fieldErrors.codigoInterno}
@@ -856,7 +854,7 @@ export default function AddProducto() {
                                 <option key={suc.id} value={suc.id}>{suc.nombre}</option>
                             ))}
                         </select>
-                         {fieldErrors.sucursalId && (
+                        {fieldErrors.sucursalId && (
                             <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>
                                 {fieldErrors.sucursalId}
@@ -924,8 +922,8 @@ export default function AddProducto() {
 
                         {/* Scanner Area */}
                         <div className="p-4">
-                            <div 
-                                id="barcode-reader" 
+                            <div
+                                id="barcode-reader"
                                 className="rounded-lg overflow-hidden border-4 border-primary/20"
                             ></div>
                             <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-3">

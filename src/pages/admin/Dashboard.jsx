@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function Dashboard() {
     const [activeFilter, setActiveFilter] = useState('todo');

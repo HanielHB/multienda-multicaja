@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import { API_URL } from '../../config/api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
-
-const API_URL = '/api';
 
 export default function Reportes() {
     const [activeTab, setActiveTab] = useState('ventas'); // 'ventas' | 'inventario' | 'bi'
     const [loading, setLoading] = useState(false);
-    
+
     // Global Date Filters
     const [startDate, setStartDate] = useState(() => {
         const date = new Date();
@@ -75,13 +74,13 @@ export default function Reportes() {
     // Helper for CSV export (generic)
     const exportToCSV = (data, filename) => {
         if (!data || !data.length) return alert('No hay datos para exportar');
-        
+
         const headers = Object.keys(data[0]);
         const csvRows = [];
-        
+
         // Agregar encabezados
         csvRows.push(headers.join(';'));
-        
+
         // Agregar datos - escapar campos con comillas si contienen caracteres especiales
         data.forEach(row => {
             const values = headers.map(header => {
@@ -141,104 +140,104 @@ export default function Reportes() {
                         <h1 className="text-2xl font-bold text-dark-charcoal dark:text-white">Reportes y Estadísticas</h1>
                         <p className="text-neutral-gray dark:text-gray-400">Visualiza el rendimiento de tu negocio</p>
                     </div>
-                        <div className="flex gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 items-center">
-                            <div className="flex flex-col sm:flex-row gap-2 items-center">
-                                <input 
-                                    type="date" 
-                                    value={startDate} 
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                />
-                                <span className="text-gray-400">-</span>
-                                <input 
-                                    type="date" 
-                                    value={endDate} 
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                />
-                            </div>
-                            <button 
-                                onClick={handleGenerate}
-                                className="bg-primary text-white px-3 py-1 rounded-md text-sm font-bold hover:bg-primary/90 flex items-center gap-1"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">refresh</span>
-                                Generar
-                            </button>
+                    <div className="flex gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 items-center">
+                        <div className="flex flex-col sm:flex-row gap-2 items-center">
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
+                            <span className="text-gray-400">-</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
                         </div>
-
-                        {/* Branch Selector */}
-                        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sucursal:</label>
-                            <select
-                                value={selectedSucursal}
-                                onChange={(e) => setSelectedSucursal(e.target.value)}
-                                className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                            >
-                                <option value="all">Todas las Sucursales</option>
-                                {sucursales.map((sucursal) => (
-                                    <option key={sucursal.id} value={sucursal.id}>
-                                        {sucursal.nombre}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
                         <button
-                             onClick={handlePrint}
-                             className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
-                             title="Imprimir / Guardar como PDF"
+                            onClick={handleGenerate}
+                            className="bg-primary text-white px-3 py-1 rounded-md text-sm font-bold hover:bg-primary/90 flex items-center gap-1"
                         >
-                            <span className="material-symbols-outlined text-[20px]">print</span>
+                            <span className="material-symbols-outlined text-[16px]">refresh</span>
+                            Generar
                         </button>
+                    </div>
 
-                        {/* Tabs */}
-                        <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border border-gray-200 dark:border-gray-700">
-                            <button
-                                onClick={() => setActiveTab('ventas')}
-                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'ventas'
-                                    ? 'bg-primary text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
-                            >
-                                Ventas
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('inventario')}
-                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'inventario'
-                                    ? 'bg-primary text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
-                            >
-                                Inventario
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('bi')}
-                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'bi'
-                                    ? 'bg-primary text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
-                            >
-                                Análisis
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('caja')}
-                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'caja'
-                                    ? 'bg-primary text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
-                            >
-                                Caja
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('clientes')}
-                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'clientes'
-                                    ? 'bg-primary text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                    }`}
-                            >
-                                Clientes
-                            </button>
-                        </div>
+                    {/* Branch Selector */}
+                    <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sucursal:</label>
+                        <select
+                            value={selectedSucursal}
+                            onChange={(e) => setSelectedSucursal(e.target.value)}
+                            className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                        >
+                            <option value="all">Todas las Sucursales</option>
+                            {sucursales.map((sucursal) => (
+                                <option key={sucursal.id} value={sucursal.id}>
+                                    {sucursal.nombre}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <button
+                        onClick={handlePrint}
+                        className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
+                        title="Imprimir / Guardar como PDF"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">print</span>
+                    </button>
+
+                    {/* Tabs */}
+                    <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border border-gray-200 dark:border-gray-700">
+                        <button
+                            onClick={() => setActiveTab('ventas')}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'ventas'
+                                ? 'bg-primary text-white shadow-md'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            Ventas
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('inventario')}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'inventario'
+                                ? 'bg-primary text-white shadow-md'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            Inventario
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('bi')}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'bi'
+                                ? 'bg-primary text-white shadow-md'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            Análisis
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('caja')}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'caja'
+                                ? 'bg-primary text-white shadow-md'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            Caja
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('clientes')}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'clientes'
+                                ? 'bg-primary text-white shadow-md'
+                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                        >
+                            Clientes
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}
@@ -261,7 +260,7 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId 
     const [ventasPeriodo, setVentasPeriodo] = useState(null);
     const [gananciaReal, setGananciaReal] = useState(null);
     const [ventasMetodoPago, setVentasMetodoPago] = useState([]);
-    
+
     // Effect to fetch data when "Generar" is clicked (shouldFetch changes) or sucursalId changes
     useEffect(() => {
         fetchVentasPeriodo();
@@ -280,7 +279,7 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId 
             // Workaround: We will use the 'onExport' prop to registering a "getData" function? No, too complex.
             // Let's Just add a "Exportar Tabla" button right above the table for now, 
             // OR if we strictly follow the top bar requirement, we need a ref.
-            
+
             // Re-read: "Botón Exportar... en la parte superior". 
             // Let's assume the user is OK with the Export button exporting what is currently "ready".
             // Implementation detail: I will add a ref in the parent in the next step if needed.
@@ -394,7 +393,7 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId 
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                     <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Costo Mercadería Vendida</p>
+                    <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Costo Mercadería Vendida</p>
                     <h3 className="text-3xl font-bold text-rose-600 dark:text-rose-400 mt-2">
                         Bs. {gananciaReal?.resumen?.costoTotal?.toFixed(2) || '0.00'}
                     </h3>
@@ -417,26 +416,26 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <h3 className="font-bold text-gray-900 dark:text-white mb-6">Ventas por Método de Pago</h3>
                 <div className="h-64 flex items-center justify-center">
-                    {ventasMetodoPago.length > 0 
+                    {ventasMetodoPago.length > 0
                         ? <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false }} />
                         : <p className="text-gray-400">No hay datos de pagos</p>
                     }
                 </div>
             </div>
-            
-             {/* Tabla detallada de utilidad solo visibles para admin */}
-             <div className="col-span-1 lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                 <div className="flex justify-between items-center mb-4">
+
+            {/* Tabla detallada de utilidad solo visibles para admin */}
+            <div className="col-span-1 lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-gray-900 dark:text-white">Detalle de Ventas</h3>
-                    <button 
+                    <button
                         onClick={() => onExport(ventasPeriodo?.detallePorFecha, 'Ventas_Detalle')}
                         className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
                     >
                         <span className="material-symbols-outlined text-[18px]">download</span>
                         Exportar CSV
                     </button>
-                 </div>
-                 <div className="overflow-x-auto">
+                </div>
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
@@ -455,8 +454,8 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId 
                             ))}
                         </tbody>
                     </table>
-                 </div>
-             </div>
+                </div>
+            </div>
         </div>
     );
 }
@@ -467,7 +466,7 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId 
 function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
     const [inventarioValorado, setInventarioValorado] = useState(null);
     const [productosHueso, setProductosHueso] = useState(null);
-    
+
     // Calculate days diff for rotation report
     const getDaysDiff = () => {
         const start = new Date(startDate);
@@ -532,7 +531,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                         <h2 className="text-4xl font-bold">
                             {inventarioValorado?.resumen?.totalUnidades || 0}
                         </h2>
-                         <p className="text-blue-200 text-xs mt-2">Productos en stock físico</p>
+                        <p className="text-blue-200 text-xs mt-2">Productos en stock físico</p>
                     </div>
                     <div>
                         <p className="text-blue-100 text-sm font-semibold uppercase tracking-wider mb-1">Variedad</p>
@@ -549,14 +548,14 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
                         <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                             <span className="material-symbols-outlined text-amber-500">warning</span>
+                            <span className="material-symbols-outlined text-amber-500">warning</span>
                             Productos Sin Movimiento ("Hueso")
                         </h3>
                         <p className="text-sm text-gray-500 mt-1">
                             Estos productos no se han vendido en el periodo seleccionado ({getDaysDiff()} días).
                         </p>
                     </div>
-                    <button 
+                    <button
                         onClick={() => onExport(productosHueso?.productos, 'Productos_Hueso')}
                         className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
                     >
@@ -581,7 +580,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                                 <tr key={producto.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                                         {producto.nombre}
-                                        <br/>
+                                        <br />
                                         <span className="text-xs text-gray-400">{producto.codigoBarras}</span>
                                     </td>
                                     <td className="px-6 py-4">{producto.categoria}</td>
@@ -607,7 +606,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                     </table>
                 </div>
             </div>
-            
+
             {/* Nota Kardex */}
             <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-center text-sm text-gray-500">
                 Para ver el <span className="font-bold">Kardex Detallado</span> de un producto específico, ve a la sección de Inventario y selecciona "Ver Movimientos".
@@ -705,7 +704,7 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="col-span-1 md:col-span-2 flex justify-end no-print">
-                <button 
+                <button
                     onClick={() => onExport(topCategorias, 'Top_Categorias')}
                     className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
                 >
@@ -713,7 +712,7 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
                     Exportar Datos BI
                 </button>
             </div>
-            
+
             {/* Top Categorías */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <h3 className="font-bold text-gray-900 dark:text-white mb-2">Top Ventas por Categoría</h3>
@@ -732,11 +731,11 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
                 <p className="text-sm text-gray-500 mb-6">Ranking de tallas con mayor volumen de venta.</p>
                 <div className="h-64 flex items-center justify-center">
                     {analisisTallas.length > 0
-                        ? <Bar data={tallasData} options={{ 
+                        ? <Bar data={tallasData} options={{
                             indexAxis: 'y', // Horizontal bar
-                            responsive: true, 
-                            maintainAspectRatio: false 
-                          }} />
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }} />
                         : <p className="text-gray-400">Sin datos suficientes</p>
                     }
                 </div>
@@ -755,7 +754,7 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
                             {topCategorias[0]?.nombre || 'N/A'}
                         </p>
                         <p className="text-sm text-purple-100 opacity-80 mt-1">
-                            {topCategorias[0] ? `${((topCategorias[0].total / topCategorias.reduce((a,b)=>a+b.total,0))*100).toFixed(0)}% de tus ingresos` : ''}
+                            {topCategorias[0] ? `${((topCategorias[0].total / topCategorias.reduce((a, b) => a + b.total, 0)) * 100).toFixed(0)}% de tus ingresos` : ''}
                         </p>
                     </div>
                     <div>
@@ -767,11 +766,11 @@ function ReportesBI({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
                             La favorita de tus clientes
                         </p>
                     </div>
-                     <div>
+                    <div>
                         <p className="text-purple-200 text-xs uppercase tracking-wider font-semibold">Recomendación</p>
                         <p className="text-sm font-medium mt-1 leading-snug">
-                            {analisisTallas.length > 0 
-                                ? `Mantén buen stock en talla ${analisisTallas[0]?.talla} y considera ofertas para tallas con bajo movimiento.` 
+                            {analisisTallas.length > 0
+                                ? `Mantén buen stock en talla ${analisisTallas[0]?.talla} y considera ofertas para tallas con bajo movimiento.`
                                 : 'Genera más ventas para obtener recomendaciones.'}
                         </p>
                     </div>
@@ -815,7 +814,7 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
         setLoadingModal(true);
         setShowModal(true);
         setModalData({ tipo, movimientos: [], sesion: sesiones.find(s => s.id === sesionId) });
-        
+
         try {
             const token = localStorage.getItem('token');
             const res = await fetch(`${API_URL}/sesion-caja/${sesionId}/movimientos?tipo=${tipo}`, {
@@ -837,7 +836,7 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-gray-900 dark:text-white">Historial de Movimientos de Caja</h3>
-                    <button 
+                    <button
                         onClick={() => onExport(sesiones, 'Reporte_Caja')}
                         className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
                     >
@@ -873,9 +872,8 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                                     Cierre: {new Date(sesion.fechaCierre).toLocaleString()}
                                                 </span>
                                             )}
-                                            <span className={`text-[10px] uppercase font-bold mt-1 max-w-fit px-2 py-0.5 rounded-full ${
-                                                sesion.estado === 'ABIERTA' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                            }`}>
+                                            <span className={`text-[10px] uppercase font-bold mt-1 max-w-fit px-2 py-0.5 rounded-full ${sesion.estado === 'ABIERTA' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                }`}>
                                                 {sesion.estado}
                                             </span>
                                         </div>
@@ -922,14 +920,14 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                                 -
                                             </span>
                                         ) : Math.abs(sesion.diferencia) < 0.01 ? (
-                                             <div className="flex flex-col items-center">
+                                            <div className="flex flex-col items-center">
                                                 <span className="material-symbols-outlined text-emerald-500">check_circle</span>
                                                 <span className="text-[10px] font-bold text-emerald-600 uppercase">Cuadro Perfecto</span>
-                                             </div>
+                                            </div>
                                         ) : sesion.diferencia > 0 ? (
                                             <div className="flex flex-col items-center">
                                                 <span className="material-symbols-outlined text-blue-500 rotate-180">arrow_downward</span>
-                                                 {/* Nota: Sobrante suele ser positivo en contabilidad si (Fisico - Sistema). Si Fisico > Sistema => Sobra dinero. */}
+                                                {/* Nota: Sobrante suele ser positivo en contabilidad si (Fisico - Sistema). Si Fisico > Sistema => Sobra dinero. */}
                                                 <span className="text-[10px] font-bold text-blue-600 uppercase">Sobrante</span>
                                                 <span className="text-xs font-bold text-blue-600">Bs. {sesion.diferencia.toFixed(2)}</span>
                                             </div>
@@ -943,7 +941,7 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                     </td>
                                 </tr>
                             ))}
-                             {sesiones.length === 0 && (
+                            {sesiones.length === 0 && (
                                 <tr>
                                     <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
                                         No hay movimientos de caja en este periodo.
@@ -1000,24 +998,22 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                                     {new Date(mov.fecha).toLocaleString()}
                                                 </p>
                                             </div>
-                                            <div className={`text-lg font-bold ${
-                                                modalData.tipo === 'ingreso' 
-                                                    ? 'text-blue-600 dark:text-blue-400' 
+                                            <div className={`text-lg font-bold ${modalData.tipo === 'ingreso'
+                                                    ? 'text-blue-600 dark:text-blue-400'
                                                     : 'text-red-600 dark:text-red-400'
-                                            }`}>
+                                                }`}>
                                                 Bs. {parseFloat(mov.monto).toFixed(2)}
                                             </div>
                                         </div>
                                     ))}
-                                    
+
                                     {/* Total */}
                                     <div className="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-gray-300 dark:border-gray-600 mt-4">
                                         <span className="font-bold text-gray-900 dark:text-white">Total:</span>
-                                        <span className={`text-xl font-black ${
-                                            modalData.tipo === 'ingreso' 
-                                                ? 'text-blue-600 dark:text-blue-400' 
+                                        <span className={`text-xl font-black ${modalData.tipo === 'ingreso'
+                                                ? 'text-blue-600 dark:text-blue-400'
                                                 : 'text-red-600 dark:text-red-400'
-                                        }`}>
+                                            }`}>
                                             Bs. {modalData.movimientos.reduce((sum, mov) => sum + parseFloat(mov.monto), 0).toFixed(2)}
                                         </span>
                                     </div>
@@ -1119,7 +1115,7 @@ function ReportesClientes({ startDate, endDate, shouldFetch, onExport, sucursalI
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-gray-900 dark:text-white">Detalle por Cliente</h3>
-                    <button 
+                    <button
                         onClick={() => onExport(exportData, 'Reporte_Clientes')}
                         className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
                     >

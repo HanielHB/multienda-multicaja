@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function Inventario() {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -101,7 +100,7 @@ export default function Inventario() {
             if (response.ok) {
                 const data = await response.json();
                 let almacenesConStock = data.detalle?.filter(inv => inv.cantidad >= 0) || [];
-                
+
                 // Si no hay inventarios pero el producto tiene un almacén asignado, usarlo
                 if (almacenesConStock.length === 0 && producto?.almacenId) {
                     const almacenProducto = almacenes.find(a => a.id === producto.almacenId);
@@ -113,9 +112,9 @@ export default function Inventario() {
                         }];
                     }
                 }
-                
+
                 setAlmacenesProducto(almacenesConStock);
-                
+
                 // Auto-select if only one almacen
                 if (almacenesConStock.length === 1) {
                     setFormData(prev => ({
@@ -138,13 +137,13 @@ export default function Inventario() {
             mov.almacen?.sucursal?.nombre?.toLowerCase().includes(searchLower) ||
             mov.motivo?.toLowerCase().includes(searchLower) ||
             mov.tipo?.toLowerCase().includes(searchLower);
-        
+
         // Filtro de fecha
         let matchesDate = true;
         if (fechaInicio || fechaFin) {
             const movDate = new Date(mov.createdAt || mov.fecha);
             movDate.setHours(0, 0, 0, 0);
-            
+
             if (fechaInicio) {
                 const startDate = new Date(fechaInicio);
                 startDate.setHours(0, 0, 0, 0);
@@ -156,7 +155,7 @@ export default function Inventario() {
                 matchesDate = matchesDate && movDate <= endDate;
             }
         }
-        
+
         return matchesSearch && matchesDate;
     });
 
@@ -185,14 +184,14 @@ export default function Inventario() {
         setProductoSeleccionado(producto);
         setSearchProduct(producto.nombre);
         setFormData(prev => ({ ...prev, almacenId: '' }));
-        
+
         // Fetch almacenes where this product exists, passing the product for fallback
         fetchAlmacenesProducto(producto.id, producto);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!productoSeleccionado || !formData.cantidad || !formData.almacenId) {
             alert('Selecciona un producto, almacén e ingresa la cantidad');
             return;
@@ -205,7 +204,7 @@ export default function Inventario() {
 
         try {
             const token = localStorage.getItem('token');
-            
+
             if (esTransferencia) {
                 // Transferencia: usar el nuevo endpoint que busca producto equivalente
                 const transferResponse = await fetch(`${API_URL}/inventarios/transferencia`, {
@@ -221,12 +220,12 @@ export default function Inventario() {
                         cantidad: parseInt(formData.cantidad)
                     })
                 });
-                
+
                 if (!transferResponse.ok) {
                     const errorData = await transferResponse.json();
                     throw new Error(errorData.error || 'Error en la transferencia');
                 }
-                
+
                 const result = await transferResponse.json();
                 console.log('Transferencia exitosa:', result);
 
@@ -234,10 +233,10 @@ export default function Inventario() {
                 closeModal();
             } else {
                 // Ingreso o Salida normal
-                const ajuste = activeTab === 'Ingreso' 
-                    ? parseInt(formData.cantidad) 
+                const ajuste = activeTab === 'Ingreso'
+                    ? parseInt(formData.cantidad)
                     : -parseInt(formData.cantidad);
-                
+
                 const payload = {
                     productoId: productoSeleccionado.id,
                     almacenId: parseInt(formData.almacenId),
@@ -345,10 +344,10 @@ export default function Inventario() {
         // Crear CSV con punto y coma (;) como delimitador para Excel
         const headers = Object.keys(dataToExport[0] || {});
         const csvRows = [];
-        
+
         // Agregar encabezados
         csvRows.push(headers.join(';'));
-        
+
         // Agregar datos - escapar campos con comillas si contienen caracteres especiales
         dataToExport.forEach(row => {
             const values = headers.map(header => {
@@ -453,7 +452,7 @@ export default function Inventario() {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative">
-                        <button 
+                        <button
                             onClick={() => setShowExportMenu(!showExportMenu)}
                             className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all"
                         >
@@ -652,20 +651,18 @@ export default function Inventario() {
                                             </span>
                                         </td>
                                         <td className="p-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                mov.tipo === 'ENTRADA' 
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${mov.tipo === 'ENTRADA'
                                                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
                                                     : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
-                                            }`}>
+                                                }`}>
                                                 {mov.tipo === 'ENTRADA' ? 'Ingreso' : 'Egreso'}
                                             </span>
                                         </td>
                                         <td className="p-4 pr-6">
-                                            <span className={`text-sm font-bold ${
-                                                mov.tipo === 'ENTRADA' 
+                                            <span className={`text-sm font-bold ${mov.tipo === 'ENTRADA'
                                                     ? 'text-emerald-600 dark:text-emerald-400'
                                                     : 'text-red-600 dark:text-red-400'
-                                            }`}>
+                                                }`}>
                                                 {mov.tipo === 'ENTRADA' ? '+' : '-'}{mov.cantidad}
                                             </span>
                                         </td>
@@ -722,8 +719,8 @@ export default function Inventario() {
                                     setFormData(prev => ({ ...prev, almacenId: '', almacenDestinoId: '' }));
                                 }}
                                 className={`flex-1 py-4 px-6 text-sm font-semibold transition-all duration-300 relative ${activeTab === 'Ingreso'
-                                        ? 'text-gray-900 dark:text-white bg-white dark:bg-background-dark'
-                                        : 'text-neutral-gray hover:text-gray-700 dark:hover:text-gray-300'
+                                    ? 'text-gray-900 dark:text-white bg-white dark:bg-background-dark'
+                                    : 'text-neutral-gray hover:text-gray-700 dark:hover:text-gray-300'
                                     }`}
                             >
                                 Ingreso
@@ -740,8 +737,8 @@ export default function Inventario() {
                                     }
                                 }}
                                 className={`flex-1 py-4 px-6 text-sm font-semibold transition-all duration-300 relative ${activeTab === 'Salida'
-                                        ? 'text-gray-900 dark:text-white bg-white dark:bg-background-dark'
-                                        : 'text-neutral-gray hover:text-gray-700 dark:hover:text-gray-300'
+                                    ? 'text-gray-900 dark:text-white bg-white dark:bg-background-dark'
+                                    : 'text-neutral-gray hover:text-gray-700 dark:hover:text-gray-300'
                                     }`}
                             >
                                 Salida
@@ -936,11 +933,10 @@ export default function Inventario() {
                             {/* Submit Button */}
                             <button
                                 type="submit"
-                                className={`w-full py-4 font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 ${
-                                    esTransferencia 
+                                className={`w-full py-4 font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 ${esTransferencia
                                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                                         : 'bg-primary hover:bg-primary/90 text-white'
-                                }`}
+                                    }`}
                             >
                                 <span className="material-symbols-outlined text-[20px]">
                                     {esTransferencia ? 'swap_horiz' : 'save'}

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function AddCategoria() {
     const navigate = useNavigate();

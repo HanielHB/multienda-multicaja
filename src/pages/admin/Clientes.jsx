@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function Clientes() {
     const [clientes, setClientes] = useState([]);
@@ -22,7 +21,7 @@ export default function Clientes() {
     // Filtrar clientes
     const filteredClientes = clientes.filter(cli => {
         const searchLower = searchTerm.toLowerCase();
-        return !searchTerm || 
+        return !searchTerm ||
             cli.nombre?.toLowerCase().includes(searchLower) ||
             cli.nroDocumento?.toLowerCase().includes(searchLower) ||
             cli.celular?.toLowerCase().includes(searchLower);

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function AperturaCajas() {
     const navigate = useNavigate();
@@ -314,12 +313,12 @@ export default function AperturaCajas() {
                     <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-[scaleIn_0.2s_ease-out]">
                         <div className="flex flex-col items-center text-center">
                             <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${modalType === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
-                                    modalType === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30' :
-                                        'bg-blue-100 dark:bg-blue-900/30'
+                                modalType === 'warning' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                                    'bg-blue-100 dark:bg-blue-900/30'
                                 }`}>
                                 <span className={`material-symbols-outlined text-3xl ${modalType === 'error' ? 'text-red-500' :
-                                        modalType === 'warning' ? 'text-amber-500' :
-                                            'text-blue-500'
+                                    modalType === 'warning' ? 'text-amber-500' :
+                                        'text-blue-500'
                                     }`}>
                                     {modalType === 'error' ? 'error' :
                                         modalType === 'warning' ? 'warning' : 'info'}

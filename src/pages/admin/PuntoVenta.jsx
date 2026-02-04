@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function PuntoVenta() {
     const navigate = useNavigate();
@@ -46,7 +45,7 @@ export default function PuntoVenta() {
     // State for API data
     const [productos, setProductos] = useState([]); // Raw products
     const [groupedProducts, setGroupedProducts] = useState([]); // Products grouped by name+color
-    
+
     const [cajaInfo, setCajaInfo] = useState({
         sucursal: 'Cargando...',
         caja: 'Cargando...',
@@ -88,7 +87,7 @@ export default function PuntoVenta() {
             // Normalizar clave: Nombre-Color
             const colorKey = p.color ? p.color.trim().toLowerCase() : 'default';
             const key = `${p.nombre.trim().toLowerCase()}-${colorKey}`;
-            
+
             if (!groups[key]) {
                 groups[key] = [];
             }
@@ -178,7 +177,7 @@ export default function PuntoVenta() {
                     });
                     // Obtener saldo de caja
                     setSaldoCaja(parseFloat(caja.saldo) || parseFloat(caja.saldoActual) || parseFloat(caja.efectivo) || 0);
-                    
+
                     // Verify if caja is actually open, otherwise redirect
                     if (caja.estado === 'CERRADA') {
                         localStorage.removeItem('cajaActiva');
@@ -319,9 +318,9 @@ export default function PuntoVenta() {
     const handleBarcodeKeyDown = (e) => {
         if (e.key === 'Enter' && searchCode.trim().length > 0) {
             e.preventDefault();
-            
-            const product = productos.find(p => 
-                p.codigoBarras === searchCode.trim() || 
+
+            const product = productos.find(p =>
+                p.codigoBarras === searchCode.trim() ||
                 p.codigoInterno === searchCode.trim()
             );
 
@@ -385,8 +384,8 @@ export default function PuntoVenta() {
                 },
                 (decodedText) => {
                     // Código detectado
-                    const product = productos.find(p => 
-                        p.codigoBarras === decodedText || 
+                    const product = productos.find(p =>
+                        p.codigoBarras === decodedText ||
                         p.codigoInterno === decodedText
                     );
 
@@ -518,18 +517,18 @@ export default function PuntoVenta() {
 
                 setShowPaymentModal(false);
                 setShowVentaExitosaModal(true);
-                
+
                 if (selectedPayment === 'efectivo') {
                     setSaldoCaja(prev => prev + total);
                 }
-                fetchProductos(); 
+                fetchProductos();
                 setCart([]);
                 setMontoEfectivo('');
                 setSelectedPayment(null);
                 setSelectedCliente(null);
                 setClienteNombre('');
                 setSearchCliente('');
-                
+
                 const numParts = numeroFactura.split('-');
                 const nextNum = parseInt(numParts[1] || 0) + 1;
                 setNumeroFactura(`${numParts[0]}-${nextNum}`);
@@ -724,52 +723,53 @@ export default function PuntoVenta() {
                             const hasVariants = group.length > 1;
 
                             return (
-                            <button
-                                key={`${product.id}-group`}
-                                onClick={() => handleProductClick(group)}
-                                className="product-card scale-in bg-white dark:bg-gray-800 rounded-xl p-4 text-left shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer relative"
-                                style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }}
-                            >
-                                <div className={`w-full aspect-square rounded-xl bg-gray-50 dark:bg-gray-700/50 mb-3 overflow-hidden flex items-center justify-center relative shadow-sm`}>
-                                    {product.imagen ? (
-                                        <img 
-                                            src={product.imagen} 
-                                            alt={product.nombre}
-                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                            onError={(e) => {
-                                                e.target.style.display = 'none';
-                                                e.target.nextSibling.style.display = 'flex';
-                                            }}
-                                        />
-                                    ) : null}
-                                    <div className={`w-full h-full flex items-center justify-center text-white ${product.colorClass}`} style={{ display: product.imagen ? 'none' : 'flex' }}>
-                                        <span className="material-symbols-outlined text-5xl opacity-80">{product.icon}</span>
+                                <button
+                                    key={`${product.id}-group`}
+                                    onClick={() => handleProductClick(group)}
+                                    className="product-card scale-in bg-white dark:bg-gray-800 rounded-xl p-4 text-left shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer relative"
+                                    style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }}
+                                >
+                                    <div className={`w-full aspect-square rounded-xl bg-gray-50 dark:bg-gray-700/50 mb-3 overflow-hidden flex items-center justify-center relative shadow-sm`}>
+                                        {product.imagen ? (
+                                            <img
+                                                src={product.imagen}
+                                                alt={product.nombre}
+                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                    e.target.nextSibling.style.display = 'flex';
+                                                }}
+                                            />
+                                        ) : null}
+                                        <div className={`w-full h-full flex items-center justify-center text-white ${product.colorClass}`} style={{ display: product.imagen ? 'none' : 'flex' }}>
+                                            <span className="material-symbols-outlined text-5xl opacity-80">{product.icon}</span>
+                                        </div>
+                                        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-[10px] font-bold text-white shadow-sm ${totalStock > 10 ? 'bg-emerald-500' : totalStock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
+                                            {totalStock} {hasVariants ? 'total' : ''}
+                                        </div>
                                     </div>
-                                    <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-[10px] font-bold text-white shadow-sm ${totalStock > 10 ? 'bg-emerald-500' : totalStock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
-                                        {totalStock} {hasVariants ? 'total' : ''}
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">{product.nombre}</h3>
+                                    <div className="flex items-end justify-between">
+                                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                            Bs. {product.precio.toFixed(2)}
+                                        </p>
+
+                                        {hasVariants ? (
+                                            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                                                <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{group.length} tallas</span>
+                                                <span className="material-symbols-outlined text-[12px] text-gray-500">grid_view</span>
+                                            </div>
+                                        ) : (
+                                            product.talla && (
+                                                <p className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                                    {product.talla}
+                                                </p>
+                                            )
+                                        )}
                                     </div>
-                                </div>
-                                <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">{product.nombre}</h3>
-                                <div className="flex items-end justify-between">
-                                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                                        Bs. {product.precio.toFixed(2)}
-                                    </p>
-                                    
-                                    {hasVariants ? (
-                                         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
-                                            <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{group.length} tallas</span>
-                                            <span className="material-symbols-outlined text-[12px] text-gray-500">grid_view</span>
-                                         </div>
-                                    ) : (
-                                        product.talla && (
-                                            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                                                {product.talla}
-                                            </p>
-                                        )
-                                    )}
-                                </div>
-                            </button>
-                        )})}
+                                </button>
+                            )
+                        })}
                     </div>
 
                     {groupedProducts.length === 0 && (
@@ -808,11 +808,10 @@ export default function PuntoVenta() {
                         <button
                             onClick={() => selectedPayment && cart.length > 0 && setShowPaymentModal(true)}
                             disabled={!selectedPayment || cart.length === 0}
-                            className={`total-btn w-full py-4 px-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-2xl transition-all btn-bounce ${
-                                selectedPayment && cart.length > 0
+                            className={`total-btn w-full py-4 px-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-2xl transition-all btn-bounce ${selectedPayment && cart.length > 0
                                     ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-600'
                                     : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
-                            }`}
+                                }`}
                         >
                             <span className="heart text-2xl">{selectedPayment && cart.length > 0 ? '💚' : '🔒'}</span>
                             <span>Bs. {total.toFixed(2)}</span>
@@ -825,196 +824,196 @@ export default function PuntoVenta() {
                     </div>
                 </aside>
 
-                 {/* Payment Modal */}
-            {
-                showPaymentModal && !showCerrarCajaModal && (
-                    <div className="absolute inset-0 z-50 flex items-stretch">
-                        {/* Backdrop */}
-                        <div
-                            className="flex-1 bg-black/20 backdrop-blur-sm page-animate"
-                            onClick={() => setShowPaymentModal(false)}
-                        />
+                {/* Payment Modal */}
+                {
+                    showPaymentModal && !showCerrarCajaModal && (
+                        <div className="absolute inset-0 z-50 flex items-stretch">
+                            {/* Backdrop */}
+                            <div
+                                className="flex-1 bg-black/20 backdrop-blur-sm page-animate"
+                                onClick={() => setShowPaymentModal(false)}
+                            />
 
-                        {/* Payment Panel */}
-                        <div className="payment-modal w-96 bg-white dark:bg-gray-900 border-l-4 modal-border border-pink-400 flex flex-col shadow-2xl">
-                            {/* Payment Type Badge */}
-                            <div className="flex justify-end p-4">
-                                <span className={`px-4 py-1.5 rounded-full text-white text-sm font-bold ${selectedPaymentInfo?.color || 'bg-pink-500'}`}>
-                                    {selectedPaymentInfo?.label || 'Efectivo'}
-                                </span>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 px-8 py-4 flex flex-col">
-                                {/* Ticket Number */}
-                                <div className="text-center mb-6">
-                                    <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300">
-                                        Ticket: <span className="font-black text-gray-900 dark:text-white">{numeroFactura}</span>
-                                    </h2>
+                            {/* Payment Panel */}
+                            <div className="payment-modal w-96 bg-white dark:bg-gray-900 border-l-4 modal-border border-pink-400 flex flex-col shadow-2xl">
+                                {/* Payment Type Badge */}
+                                <div className="flex justify-end p-4">
+                                    <span className={`px-4 py-1.5 rounded-full text-white text-sm font-bold ${selectedPaymentInfo?.color || 'bg-pink-500'}`}>
+                                        {selectedPaymentInfo?.label || 'Efectivo'}
+                                    </span>
                                 </div>
 
-                                {/* Client Selector */}
-                                <div className="relative mb-6">
-                                    <label className="block text-sm text-gray-500 mb-2 text-center">Cliente</label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={selectedCliente ? selectedCliente.nombre : searchCliente}
-                                            onChange={(e) => {
-                                                setSearchCliente(e.target.value);
-                                                setSelectedCliente(null);
-                                                setClienteNombre('');
-                                                setShowClienteDropdown(true);
-                                            }}
-                                            onFocus={() => setShowClienteDropdown(true)}
-                                            onBlur={() => {
-                                                setTimeout(() => {
-                                                    if (!selectedCliente && searchCliente.trim()) {
-                                                        setClienteNombre(searchCliente.trim());
-                                                    }
-                                                    setShowClienteDropdown(false);
-                                                }, 200);
-                                            }}
-                                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-center font-medium"
-                                            placeholder="Buscar o escribir nombre del cliente..."
-                                        />
-                                        {(selectedCliente || searchCliente) && (
-                                            <button
-                                                onClick={() => {
+                                {/* Content */}
+                                <div className="flex-1 px-8 py-4 flex flex-col">
+                                    {/* Ticket Number */}
+                                    <div className="text-center mb-6">
+                                        <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300">
+                                            Ticket: <span className="font-black text-gray-900 dark:text-white">{numeroFactura}</span>
+                                        </h2>
+                                    </div>
+
+                                    {/* Client Selector */}
+                                    <div className="relative mb-6">
+                                        <label className="block text-sm text-gray-500 mb-2 text-center">Cliente</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={selectedCliente ? selectedCliente.nombre : searchCliente}
+                                                onChange={(e) => {
+                                                    setSearchCliente(e.target.value);
                                                     setSelectedCliente(null);
-                                                    setSearchCliente('');
                                                     setClienteNombre('');
+                                                    setShowClienteDropdown(true);
                                                 }}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                                            >
-                                                <span className="material-symbols-outlined text-sm">close</span>
-                                            </button>
+                                                onFocus={() => setShowClienteDropdown(true)}
+                                                onBlur={() => {
+                                                    setTimeout(() => {
+                                                        if (!selectedCliente && searchCliente.trim()) {
+                                                            setClienteNombre(searchCliente.trim());
+                                                        }
+                                                        setShowClienteDropdown(false);
+                                                    }, 200);
+                                                }}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary text-center font-medium"
+                                                placeholder="Buscar o escribir nombre del cliente..."
+                                            />
+                                            {(selectedCliente || searchCliente) && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedCliente(null);
+                                                        setSearchCliente('');
+                                                        setClienteNombre('');
+                                                    }}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">close</span>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Dropdown de clientes */}
+                                        {showClienteDropdown && !selectedCliente && (
+                                            <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-30">
+                                                {clientes
+                                                    .filter(c =>
+                                                        !searchCliente ||
+                                                        c.nombre?.toLowerCase().includes(searchCliente.toLowerCase()) ||
+                                                        c.nroDocumento?.includes(searchCliente) ||
+                                                        c.celular?.includes(searchCliente)
+                                                    )
+                                                    .slice(0, 10)
+                                                    .map(cliente => (
+                                                        <button
+                                                            key={cliente.id}
+                                                            onClick={() => {
+                                                                setSelectedCliente(cliente);
+                                                                setSearchCliente('');
+                                                                setShowClienteDropdown(false);
+                                                            }}
+                                                            className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                                        >
+                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                                                {cliente.nombre?.charAt(0)?.toUpperCase() || 'C'}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                                        {cliente.nombre}
+                                                                    </p>
+                                                                    {cliente.nroDocumento && (
+                                                                        <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                                                            {cliente.nroDocumento}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-xs text-gray-500">{cliente.celular || ''}</p>
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                }
+                                            </div>
                                         )}
                                     </div>
 
-                                    {/* Dropdown de clientes */}
-                                    {showClienteDropdown && !selectedCliente && (
-                                        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-30">
-                                            {clientes
-                                                .filter(c =>
-                                                    !searchCliente ||
-                                                    c.nombre?.toLowerCase().includes(searchCliente.toLowerCase()) ||
-                                                    c.nroDocumento?.includes(searchCliente) ||
-                                                    c.celular?.includes(searchCliente)
-                                                )
-                                                .slice(0, 10)
-                                                .map(cliente => (
-                                                    <button
-                                                        key={cliente.id}
-                                                        onClick={() => {
-                                                            setSelectedCliente(cliente);
-                                                            setSearchCliente('');
-                                                            setShowClienteDropdown(false);
-                                                        }}
-                                                        className="w-full flex items-center gap-3 p-3 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                                                            {cliente.nombre?.charAt(0)?.toUpperCase() || 'C'}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                                                    {cliente.nombre}
-                                                                </p>
-                                                                {cliente.nroDocumento && (
-                                                                    <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                                                                        {cliente.nroDocumento}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-xs text-gray-500">{cliente.celular || ''}</p>
-                                                        </div>
-                                                    </button>
-                                                ))
-                                            }
+                                    {/* Payment Amount */}
+                                    <div className="mb-6">
+                                        <p className="text-center text-gray-400 text-sm mb-2">{selectedPaymentInfo?.label || 'Efectivo'}</p>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={montoEfectivo}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (val >= 0 || e.target.value === '') {
+                                                    setMontoEfectivo(e.target.value);
+                                                }
+                                            }}
+                                            placeholder={total.toFixed(0)}
+                                            className="amount-input w-full bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-300"
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    {/* Divider */}
+                                    <div className="border-t border-dashed border-gray-200 dark:border-gray-700 my-4"></div>
+
+                                    {/* Summary */}
+                                    <div className="space-y-3 mb-6">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-gray-900 dark:text-white">Total:</span>
+                                            <span className="font-black text-lg text-gray-900 dark:text-white">Bs. {total.toFixed(2)}</span>
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* Payment Amount */}
-                                <div className="mb-6">
-                                    <p className="text-center text-gray-400 text-sm mb-2">{selectedPaymentInfo?.label || 'Efectivo'}</p>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={montoEfectivo}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            if (val >= 0 || e.target.value === '') {
-                                                setMontoEfectivo(e.target.value);
-                                            }
-                                        }}
-                                        placeholder={total.toFixed(0)}
-                                        className="amount-input w-full bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-300"
-                                        autoFocus
-                                    />
-                                </div>
-
-                                {/* Divider */}
-                                <div className="border-t border-dashed border-gray-200 dark:border-gray-700 my-4"></div>
-
-                                {/* Summary */}
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-bold text-gray-900 dark:text-white">Total:</span>
-                                        <span className="font-black text-lg text-gray-900 dark:text-white">Bs. {total.toFixed(2)}</span>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-500">Cambio:</span>
+                                            <span className="font-bold text-emerald-600">Bs. {vuelto.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-500">Restante:</span>
+                                            <span className={`font-bold ${restante > 0 ? 'text-red-500' : 'text-gray-400'}`}>Bs. {restante.toFixed(2)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Cambio:</span>
-                                        <span className="font-bold text-emerald-600">Bs. {vuelto.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Restante:</span>
-                                        <span className={`font-bold ${restante > 0 ? 'text-red-500' : 'text-gray-400'}`}>Bs. {restante.toFixed(2)}</span>
+
+                                    {/* Action Buttons */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {/* Cancelar Venta Button */}
+                                        <button
+                                            onClick={() => {
+                                                setShowPaymentModal(false);
+                                                setMontoEfectivo('');
+                                                setSelectedPayment(null);
+                                            }}
+                                            className="py-3 rounded-xl font-bold text-base transition-all bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 btn-bounce"
+                                        >
+                                            CANCELAR VENTA
+                                        </button>
+
+                                        {/* Cobrar Button */}
+                                        <button
+                                            onClick={handleCobrar}
+                                            disabled={loading || restante > 0 || cart.length === 0}
+                                            className={`py-3 rounded-xl font-bold text-base transition-all ${restante <= 0 && cart.length > 0 && !loading
+                                                ? 'bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg hover:shadow-xl hover:-translate-y-1'
+                                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            {loading ? 'Procesando...' : `COBRAR (enter)`}
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Action Buttons */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    {/* Cancelar Venta Button */}
+                                {/* Back Button */}
+                                <div className="p-4 border-t border-gray-100 dark:border-gray-800">
                                     <button
-                                        onClick={() => {
-                                            setShowPaymentModal(false);
-                                            setMontoEfectivo('');
-                                            setSelectedPayment(null);
-                                        }}
-                                        className="py-3 rounded-xl font-bold text-base transition-all bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 btn-bounce"
+                                        onClick={() => setShowPaymentModal(false)}
+                                        className="flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                                     >
-                                        CANCELAR VENTA
-                                    </button>
-                                    
-                                    {/* Cobrar Button */}
-                                    <button
-                                        onClick={handleCobrar}
-                                        disabled={loading || restante > 0 || cart.length === 0}
-                                        className={`py-3 rounded-xl font-bold text-base transition-all ${restante <= 0 && cart.length > 0 && !loading
-                                            ? 'bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg hover:shadow-xl hover:-translate-y-1'
-                                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                            }`}
-                                    >
-                                        {loading ? 'Procesando...' : `COBRAR (enter)`}
+                                        <span className="material-symbols-outlined">chevron_left</span>
+                                        <span className="font-medium">volver</span>
                                     </button>
                                 </div>
-                            </div>
-
-                            {/* Back Button */}
-                            <div className="p-4 border-t border-gray-100 dark:border-gray-800">
-                                <button
-                                    onClick={() => setShowPaymentModal(false)}
-                                    className="flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                                >
-                                    <span className="material-symbols-outlined">chevron_left</span>
-                                    <span className="font-medium">volver</span>
-                                </button>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
             </div>
 
             {/* Modal Ingresar Dinero */}
@@ -1445,19 +1444,17 @@ export default function PuntoVenta() {
                                             setShowSizeModal(false);
                                         }}
                                         disabled={variant.stock === 0}
-                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
-                                            variant.stock > 0
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${variant.stock > 0
                                                 ? 'border-gray-200 dark:border-gray-700 hover:border-primary hover:bg-primary/5 cursor-pointer'
                                                 : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 opacity-60 cursor-not-allowed'
-                                        }`}
+                                            }`}
                                     >
                                         <span className="text-lg font-bold text-gray-800 dark:text-white">
                                             {variant.talla || 'Única'}
                                         </span>
-                                        <span className={`text-xs font-medium ${
-                                            variant.stock > 5 ? 'text-emerald-500' : 
-                                            variant.stock > 0 ? 'text-amber-500' : 'text-red-500'
-                                        }`}>
+                                        <span className={`text-xs font-medium ${variant.stock > 5 ? 'text-emerald-500' :
+                                                variant.stock > 0 ? 'text-amber-500' : 'text-red-500'
+                                            }`}>
                                             Stock: {variant.stock}
                                         </span>
                                     </button>
@@ -1473,7 +1470,7 @@ export default function PuntoVenta() {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowVentaExitosaModal(false)} />
                     <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-sm w-full scale-in text-center">
-                         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30 mx-auto">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30 mx-auto">
                             <span className="material-symbols-outlined text-5xl text-white">check</span>
                         </div>
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Venta Exitosa!</h3>
@@ -1592,14 +1589,14 @@ export default function PuntoVenta() {
                                     <p>Por favor conserve este ticket para cualquier reclamo.</p>
                                 </div>
                             </div>
-                            
+
                             {/* Actions */}
                             <div className="p-4 bg-gray-50 border-t flex gap-3 sticky bottom-0">
                                 <button
                                     onClick={() => {
-                                      const printContent = document.getElementById('ticket-print');
-                                      const win = window.open('', '', 'width=800,height=600');
-                                      win.document.write(`
+                                        const printContent = document.getElementById('ticket-print');
+                                        const win = window.open('', '', 'width=800,height=600');
+                                        win.document.write(`
                                         <html>
                                           <head>
                                             <title>Imprimir Ticket</title>
@@ -1617,7 +1614,7 @@ export default function PuntoVenta() {
                                           </body>
                                         </html>
                                       `);
-                                      win.document.close();
+                                        win.document.close();
                                     }}
                                     className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-colors"
                                 >

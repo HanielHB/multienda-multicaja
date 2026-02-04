@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function Usuarios() {
     const [usuarios, setUsuarios] = useState([]);
@@ -38,7 +37,7 @@ export default function Usuarios() {
     // Filtrar usuarios
     const filteredUsuarios = usuarios.filter(usr => {
         const searchLower = searchTerm.toLowerCase();
-        return !searchTerm || 
+        return !searchTerm ||
             usr.nombres?.toLowerCase().includes(searchLower) ||
             usr.email?.toLowerCase().includes(searchLower) ||
             usr.sucursal?.nombre?.toLowerCase().includes(searchLower) ||
@@ -141,34 +140,34 @@ export default function Usuarios() {
             setPasswordError('');
             return true;
         }
-        
+
         if (password.length < 8) {
             setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número');
             return false;
         }
-        
+
         if (!/[A-Z]/.test(password)) {
             setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número');
             return false;
         }
-        
+
         if (!/[0-9]/.test(password)) {
             setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número');
             return false;
         }
-        
+
         setPasswordError('');
         return true;
     };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        
+
         // Validar contraseña en tiempo real
         if (name === 'password') {
             validatePassword(value);
         }
-        
+
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -183,7 +182,7 @@ export default function Usuarios() {
             const parts = nombres.trim().split(' ');
             const nombre = parts[0] || '';
             const apellido = parts.slice(1).join(' ') || '';
-            
+
             setFormData({
                 nombre: nombre,
                 apellido: apellido,
@@ -235,12 +234,12 @@ export default function Usuarios() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Validar contraseña si se está creando o si se está editando y se ingresó una nueva contraseña
         if ((!isEditing || formData.password) && passwordError) {
             return;
         }
-        
+
         setFormLoading(true);
 
         try {
@@ -254,7 +253,7 @@ export default function Usuarios() {
             dataToSend.nombres = `${formData.nombre} ${formData.apellido}`.trim();
             delete dataToSend.nombre;
             delete dataToSend.apellido;
-            
+
             if (isEditing && !dataToSend.password) {
                 delete dataToSend.password;
             }
@@ -545,11 +544,10 @@ export default function Usuarios() {
                                             name="password"
                                             value={formData.password}
                                             onChange={handleChange}
-                                            className={`w-full px-4 py-2 pr-10 rounded-lg border ${
-                                                passwordError && formData.password 
-                                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                                            className={`w-full px-4 py-2 pr-10 rounded-lg border ${passwordError && formData.password
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                                                     : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'
-                                            } dark:bg-gray-800 dark:text-white text-sm`}
+                                                } dark:bg-gray-800 dark:text-white text-sm`}
                                             placeholder="••••••"
                                             required={!isEditing}
                                         />

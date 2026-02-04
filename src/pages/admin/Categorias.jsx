@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const API_URL = '/api';
+import { API_URL } from '../../config/api';
 
 export default function Categorias() {
     const [categorias, setCategorias] = useState([]);
@@ -20,7 +19,7 @@ export default function Categorias() {
     // Filtrar categorías
     const filteredCategorias = categorias.filter(cat => {
         const searchLower = searchTerm.toLowerCase();
-        return !searchTerm || 
+        return !searchTerm ||
             cat.nombre?.toLowerCase().includes(searchLower) ||
             cat.descripcion?.toLowerCase().includes(searchLower);
     });
@@ -228,8 +227,8 @@ export default function Categorias() {
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${categoria.activa
-                                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                                                 }`}>
                                                 <span className={`size-1.5 rounded-full ${categoria.activa ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
                                                 {categoria.activa ? 'Activa' : 'Inactiva'}
@@ -293,7 +292,7 @@ export default function Categorias() {
             {showDeleteModal && categoryToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     {/* Backdrop */}
-                    <div 
+                    <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                         onClick={closeDeleteModal}
                     />
