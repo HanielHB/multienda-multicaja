@@ -24,6 +24,7 @@ import AperturaCajas from './pages/admin/AperturaCajas.jsx';
 import PuntoVenta from './pages/admin/PuntoVenta.jsx';
 import Dashboard from './pages/admin/Dashboard.jsx';
 import Reportes from './pages/admin/Reportes.jsx';
+import Backup from './pages/admin/Backup.jsx';
 
 // Define las rutas
 const router = createBrowserRouter([
@@ -112,6 +113,10 @@ const router = createBrowserRouter([
       {
         path: 'reportes',
         element: <ProtectedRoute allowedRoles={['administrador', 'supervisor']}><Reportes /></ProtectedRoute>
+      },
+      {
+        path: 'backup',
+        element: <ProtectedRoute allowedRoles={['administrador']}><Backup /></ProtectedRoute>
       },
     ]
   }

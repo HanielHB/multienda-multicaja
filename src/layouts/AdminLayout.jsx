@@ -326,6 +326,27 @@ export default function AdminLayout() {
                   </p>
                 </Link>
               )}
+
+              {/* Backup: Solo Admin */}
+              {['administrador'].includes(user?.tipo) && (
+                <Link
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive('/admin/backup') || location.pathname.startsWith('/admin/backup')
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-neutral-gray hover:bg-primary/10 hover:text-primary'
+                    }`}
+                  to="/admin/backup"
+                >
+                  <span
+                    className="material-symbols-outlined text-2xl"
+                    style={isActive('/admin/backup') || location.pathname.startsWith('/admin/backup') ? { fontVariationSettings: "'FILL' 1" } : {}}
+                  >
+                    cloud_download
+                  </span>
+                  <p className={`text-sm leading-normal ${isActive('/admin/backup') || location.pathname.startsWith('/admin/backup') ? 'font-bold' : 'font-medium'}`}>
+                    Backup
+                  </p>
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex flex-col gap-1">
