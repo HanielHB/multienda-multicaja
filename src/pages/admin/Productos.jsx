@@ -455,8 +455,8 @@ export default function Productos() {
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider w-[30%]">Descripción del Producto</th>
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-right">Precio Venta</th>
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-right hidden lg:table-cell">Precio Compra</th>
-                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Talla</th>
-                                <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Color</th>
+                                <th className="hidden sm:table-cell py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Talla</th>
+                                <th className="hidden md:table-cell py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Color</th>
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-center">Inventario</th>
                                 <th className="py-4 px-6 text-xs font-bold text-neutral-gray dark:text-gray-400 uppercase tracking-wider text-right w-[150px]">Acciones</th>
                             </tr>
@@ -523,12 +523,12 @@ export default function Productos() {
                                                     Bs. {parseFloat(producto.precioCompra).toFixed(2)}
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-6 text-center">
+                                            <td className="hidden sm:table-cell py-4 px-6 text-center">
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                                                     {producto.talla || 'N/A'}
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-6 text-center">
+                                            <td className="hidden md:table-cell py-4 px-6 text-center">
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                                                     {producto.color || 'N/A'}
                                                 </span>

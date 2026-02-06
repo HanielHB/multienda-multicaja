@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="128" fill="#3B82F6"/>
+  <g fill="white">
+    <!-- Cart Icon -->
+    <path d="M156 144h24l20 100h132l28-80H196" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="212" cy="284" r="16"/>
+    <circle cx="324" cy="284" r="16"/>
+    <!-- Store roof -->
+    <path d="M128 340 L256 260 L384 340" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Store front -->
+    <rect x="168" y="340" width="176" height="100" rx="8"/>
+    <!-- Door -->
+    <rect x="232" y="380" width="48" height="60" fill="#3B82F6"/>
+  </g>
+</svg>

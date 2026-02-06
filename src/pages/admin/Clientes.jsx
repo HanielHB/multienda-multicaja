@@ -227,7 +227,7 @@ export default function Clientes() {
                         <thead>
                             <tr className="bg-background-light dark:bg-gray-900/50 border-b border-border-light dark:border-border-dark text-xs uppercase text-neutral-gray font-semibold tracking-wide">
                                 <th className="p-4 pl-6">Nombre</th>
-                                <th className="p-4">Nro. Documento</th>
+                                <th className="hidden sm:table-cell p-4">Nro. Documento</th>
                                 <th className="p-4">Celular</th>
                                 <th className="p-4 pr-6 text-right w-32">Acciones</th>
                             </tr>
@@ -254,7 +254,7 @@ export default function Clientes() {
                                                 <span className="text-sm font-bold text-gray-900 dark:text-white">{cliente.nombre}</span>
                                             </div>
                                         </td>
-                                        <td className="p-4">
+                                        <td className="hidden sm:table-cell p-4">
                                             <span className="text-sm text-neutral-gray dark:text-gray-400">
                                                 {cliente.nroDocumento || 'Sin documento'}
                                             </span>

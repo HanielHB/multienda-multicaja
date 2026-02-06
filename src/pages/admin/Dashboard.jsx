@@ -592,13 +592,13 @@ export default function Dashboard() {
                                     <th className="text-left py-3 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Fecha ↕
                                     </th>
-                                    <th className="text-left py-3 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    <th className="hidden sm:table-cell text-left py-3 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Caja ↕
                                     </th>
                                     <th className="text-left py-3 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Tipo ↕
                                     </th>
-                                    <th className="text-left py-3 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    <th className="hidden md:table-cell text-left py-3 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Usuario ↕
                                     </th>
                                     <th className="text-right py-3 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -623,7 +623,7 @@ export default function Dashboard() {
                                             style={{ animationDelay: `${0.8 + index * 0.05}s` }}
                                         >
                                             <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.fecha}</td>
-                                            <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.caja}</td>
+                                            <td className="hidden sm:table-cell py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.caja}</td>
                                             <td className="py-3 px-2">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${mov.tipo.toUpperCase().includes('INGRESO') || mov.tipo.toUpperCase().includes('APERTURA')
                                                     ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
@@ -634,7 +634,7 @@ export default function Dashboard() {
                                                     {mov.tipo}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.usuario}</td>
+                                            <td className="hidden md:table-cell py-3 px-2 text-sm text-gray-600 dark:text-gray-300">{mov.usuario}</td>
                                             <td className={`py-3 px-2 text-sm font-semibold text-right ${mov.monto >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                                 {mov.monto >= 0 ? '+' : ''}Bs. {formatCurrency(Math.abs(mov.monto))}
                                             </td>

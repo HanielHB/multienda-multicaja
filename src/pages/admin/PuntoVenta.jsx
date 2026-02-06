@@ -59,6 +59,10 @@ export default function PuntoVenta() {
     const [scanning, setScanning] = useState(false);
     const scannerRef = useRef(null);
 
+    // State for mobile responsive bottom sheets
+    const [showMobileCart, setShowMobileCart] = useState(false);
+    const [showMobilePayment, setShowMobilePayment] = useState(false);
+
     // Fetch products, clientes and caja info on mount
     useEffect(() => {
         fetchProductos();
@@ -604,8 +608,36 @@ export default function PuntoVenta() {
 
             {/* Main Content */}
             <div className="flex-1 flex overflow-hidden relative">
-                {/* Left Panel - User Info & Cart */}
-                <aside className="w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col slide-in">
+
+                {/* Mobile Search Bar - visible only on mobile */}
+                <div className="lg:hidden absolute top-0 left-0 right-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-3 flex gap-2">
+                    <input
+                        type="text"
+                        value={searchCode}
+                        onChange={handleBarcodeInput}
+                        onKeyDown={handleBarcodeKeyDown}
+                        className="w-16 px-2.5 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
+                        placeholder="Cód"
+                    />
+                    <input
+                        type="text"
+                        value={searchProduct}
+                        onChange={(e) => setSearchProduct(e.target.value)}
+                        className="flex-1 px-3 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
+                        placeholder="Buscar producto..."
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowScannerModal(true)}
+                        className="p-2 text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
+                        title="Escanear código"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
+                    </button>
+                </div>
+
+                {/* Left Panel - User Info & Cart - HIDDEN on mobile */}
+                <aside className="hidden lg:flex w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-col slide-in">
                     {/* User Info */}
                     <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                         <div className="flex items-center gap-3">
@@ -715,8 +747,8 @@ export default function PuntoVenta() {
                 </aside>
 
                 {/* Center - Products Grid */}
-                <main className="flex-1 bg-slate-50 dark:bg-gray-900/50 p-4 overflow-y-auto">
-                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <main className="flex-1 bg-slate-50 dark:bg-gray-900/50 p-4 pt-16 lg:pt-4 overflow-y-auto pb-24 lg:pb-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
                         {groupedProducts.map((group, index) => {
                             const product = group[0]; // Producto representante del grupo
                             const totalStock = group.reduce((acc, p) => acc + p.stock, 0);
@@ -781,8 +813,8 @@ export default function PuntoVenta() {
                     )}
                 </main>
 
-                {/* Right Panel - Payment Methods & Total */}
-                <aside className="w-64 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col slide-up">
+                {/* Right Panel - Payment Methods & Total - HIDDEN on mobile */}
+                <aside className="hidden lg:flex w-64 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex-col slide-up">
                     {/* Payment Method Buttons */}
                     <div className="p-3 grid grid-cols-2 gap-2">
                         {paymentMethods.map((method) => (
@@ -809,8 +841,8 @@ export default function PuntoVenta() {
                             onClick={() => selectedPayment && cart.length > 0 && setShowPaymentModal(true)}
                             disabled={!selectedPayment || cart.length === 0}
                             className={`total-btn w-full py-4 px-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-2xl transition-all btn-bounce ${selectedPayment && cart.length > 0
-                                    ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-600'
-                                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
+                                ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-600'
+                                : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
                                 }`}
                         >
                             <span className="heart text-2xl">{selectedPayment && cart.length > 0 ? '💚' : '🔒'}</span>
@@ -1015,6 +1047,86 @@ export default function PuntoVenta() {
                         </div>
                     )}
             </div>
+
+            {/* Mobile FAB - Cart Button */}
+            <button
+                onClick={() => setShowMobileCart(true)}
+                className="lg:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-primary shadow-lg shadow-primary/40 flex items-center justify-center text-white hover:scale-105 transition-transform"
+                aria-label="Ver carrito"
+            >
+                <span className="material-symbols-outlined text-2xl">shopping_cart</span>
+                {cart.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                        {cart.reduce((acc, item) => acc + item.cantidad, 0)}
+                    </span>
+                )}
+            </button>
+
+            {/* Mobile Cart Bottom Sheet */}
+            {showMobileCart && (
+                <div className="lg:hidden fixed inset-0 z-50">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowMobileCart(false)} />
+                    <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-3xl max-h-[85vh] flex flex-col slide-in-up safe-bottom">
+                        <div className="flex justify-center pt-3 pb-2">
+                            <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                        </div>
+                        <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Carrito ({cart.length})</h3>
+                            <button onClick={() => setShowMobileCart(false)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <span className="material-symbols-outlined text-gray-500">close</span>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-4 py-2">
+                            {cart.map((item, index) => (
+                                <div key={`mobile-${item.id}-${index}`} className="py-3 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">{item.nombre}</h4>
+                                            {item.talla && <p className="text-xs text-gray-500">Talla: {item.talla}</p>}
+                                            <p className="text-xs text-gray-500">Bs. {item.precioUnit.toFixed(2)} c/u</p>
+                                        </div>
+                                        <span className="font-bold text-gray-900 dark:text-white">Bs. {(item.precioUnit * item.cantidad).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-[16px]">remove</span>
+                                            </button>
+                                            <span className="font-bold">{item.cantidad}</span>
+                                            <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-[16px]">add</span>
+                                            </button>
+                                        </div>
+                                        <button onClick={() => removeItem(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {cart.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                    <span className="material-symbols-outlined text-5xl mb-2">shopping_cart</span>
+                                    <p className="text-sm">Carrito vacío</p>
+                                </div>
+                            )}
+                        </div>
+                        {cart.length > 0 && (
+                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-gray-600 dark:text-gray-400">Total:</span>
+                                    <span className="text-2xl font-black text-gray-900 dark:text-white">Bs. {total.toFixed(2)}</span>
+                                </div>
+                                <button
+                                    onClick={() => { setShowMobileCart(false); setTimeout(() => setShowPaymentModal(true), 300); }}
+                                    className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30"
+                                >
+                                    Continuar al Pago
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Modal Ingresar Dinero */}
             {
@@ -1445,15 +1557,15 @@ export default function PuntoVenta() {
                                         }}
                                         disabled={variant.stock === 0}
                                         className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${variant.stock > 0
-                                                ? 'border-gray-200 dark:border-gray-700 hover:border-primary hover:bg-primary/5 cursor-pointer'
-                                                : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 opacity-60 cursor-not-allowed'
+                                            ? 'border-gray-200 dark:border-gray-700 hover:border-primary hover:bg-primary/5 cursor-pointer'
+                                            : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 opacity-60 cursor-not-allowed'
                                             }`}
                                     >
                                         <span className="text-lg font-bold text-gray-800 dark:text-white">
                                             {variant.talla || 'Única'}
                                         </span>
                                         <span className={`text-xs font-medium ${variant.stock > 5 ? 'text-emerald-500' :
-                                                variant.stock > 0 ? 'text-amber-500' : 'text-red-500'
+                                            variant.stock > 0 ? 'text-amber-500' : 'text-red-500'
                                             }`}>
                                             Stock: {variant.stock}
                                         </span>

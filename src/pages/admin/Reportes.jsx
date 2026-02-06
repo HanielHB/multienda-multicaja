@@ -135,108 +135,116 @@ export default function Reportes() {
             `}</style>
             <div className="flex flex-col gap-6">
                 {/* Header */}
-                <div className="flex items-center justify-between no-print">
-                    <div>
-                        <h1 className="text-2xl font-bold text-dark-charcoal dark:text-white">Reportes y Estadísticas</h1>
-                        <p className="text-neutral-gray dark:text-gray-400">Visualiza el rendimiento de tu negocio</p>
+                <div className="no-print flex flex-col gap-4">
+                    {/* Title Row */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-bold text-dark-charcoal dark:text-white">Reportes y Estadísticas</h1>
+                            <p className="text-neutral-gray dark:text-gray-400 text-sm">Visualiza el rendimiento de tu negocio</p>
+                        </div>
+                        <button
+                            onClick={handlePrint}
+                            className="self-start sm:self-auto bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
+                            title="Imprimir / Guardar como PDF"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">print</span>
+                            <span className="sm:hidden">Imprimir</span>
+                        </button>
                     </div>
-                    <div className="flex gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 items-center">
-                        <div className="flex flex-col sm:flex-row gap-2 items-center">
+
+                    {/* Filters Row - Stacked on mobile */}
+                    <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+                        {/* Date Range */}
+                        <div className="flex gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 items-center flex-wrap">
                             <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
-                                className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                className="flex-1 min-w-[120px] px-2 py-1.5 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
                             <span className="text-gray-400">-</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
-                                className="px-2 py-1 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                className="flex-1 min-w-[120px] px-2 py-1.5 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
+                            <button
+                                onClick={handleGenerate}
+                                className="bg-primary text-white px-3 py-1.5 rounded-md text-sm font-bold hover:bg-primary/90 flex items-center gap-1 whitespace-nowrap"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">refresh</span>
+                                Generar
+                            </button>
                         </div>
-                        <button
-                            onClick={handleGenerate}
-                            className="bg-primary text-white px-3 py-1 rounded-md text-sm font-bold hover:bg-primary/90 flex items-center gap-1"
-                        >
-                            <span className="material-symbols-outlined text-[16px]">refresh</span>
-                            Generar
-                        </button>
+
+                        {/* Branch Selector */}
+                        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Sucursal:</label>
+                            <select
+                                value={selectedSucursal}
+                                onChange={(e) => setSelectedSucursal(e.target.value)}
+                                className="flex-1 px-2 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                            >
+                                <option value="all">Todas</option>
+                                {sucursales.map((sucursal) => (
+                                    <option key={sucursal.id} value={sucursal.id}>
+                                        {sucursal.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    {/* Branch Selector */}
-                    <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sucursal:</label>
-                        <select
-                            value={selectedSucursal}
-                            onChange={(e) => setSelectedSucursal(e.target.value)}
-                            className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                        >
-                            <option value="all">Todas las Sucursales</option>
-                            {sucursales.map((sucursal) => (
-                                <option key={sucursal.id} value={sucursal.id}>
-                                    {sucursal.nombre}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <button
-                        onClick={handlePrint}
-                        className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-2"
-                        title="Imprimir / Guardar como PDF"
-                    >
-                        <span className="material-symbols-outlined text-[20px]">print</span>
-                    </button>
-
-                    {/* Tabs */}
-                    <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border border-gray-200 dark:border-gray-700">
-                        <button
-                            onClick={() => setActiveTab('ventas')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'ventas'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Ventas
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('inventario')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'inventario'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Inventario
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('bi')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'bi'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Análisis
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('caja')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'caja'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Caja
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('clientes')}
-                            className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'clientes'
-                                ? 'bg-primary text-white shadow-md'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
-                        >
-                            Clientes
-                        </button>
+                    {/* Tabs - Horizontal scroll on mobile */}
+                    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+                        <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm border border-gray-200 dark:border-gray-700 w-max sm:w-auto">
+                            <button
+                                onClick={() => setActiveTab('ventas')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'ventas'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Ventas
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('inventario')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'inventario'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Inventario
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('bi')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'bi'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Análisis
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('caja')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'caja'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Caja
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('clientes')}
+                                className={`px-3 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'clientes'
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                            >
+                                Clientes
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -999,8 +1007,8 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                                 </p>
                                             </div>
                                             <div className={`text-lg font-bold ${modalData.tipo === 'ingreso'
-                                                    ? 'text-blue-600 dark:text-blue-400'
-                                                    : 'text-red-600 dark:text-red-400'
+                                                ? 'text-blue-600 dark:text-blue-400'
+                                                : 'text-red-600 dark:text-red-400'
                                                 }`}>
                                                 Bs. {parseFloat(mov.monto).toFixed(2)}
                                             </div>
@@ -1011,8 +1019,8 @@ function ReportesCaja({ startDate, endDate, shouldFetch, onExport, sucursalId })
                                     <div className="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-gray-300 dark:border-gray-600 mt-4">
                                         <span className="font-bold text-gray-900 dark:text-white">Total:</span>
                                         <span className={`text-xl font-black ${modalData.tipo === 'ingreso'
-                                                ? 'text-blue-600 dark:text-blue-400'
-                                                : 'text-red-600 dark:text-red-400'
+                                            ? 'text-blue-600 dark:text-blue-400'
+                                            : 'text-red-600 dark:text-red-400'
                                             }`}>
                                             Bs. {modalData.movimientos.reduce((sum, mov) => sum + parseFloat(mov.monto), 0).toFixed(2)}
                                         </span>
