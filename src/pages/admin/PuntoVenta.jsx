@@ -430,7 +430,11 @@ export default function PuntoVenta() {
     // Iniciar escáner cuando se abre el modal
     useEffect(() => {
         if (showScannerModal) {
-            startScanner();
+            // Pequeño delay para asegurar que el DOM esté listo
+            const timer = setTimeout(() => {
+                startScanner();
+            }, 300);
+            return () => clearTimeout(timer);
         }
         return () => {
             if (scannerRef.current && scanning) {
@@ -549,7 +553,7 @@ export default function PuntoVenta() {
     const selectedPaymentInfo = paymentMethods.find(m => m.id === selectedPayment);
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] -m-6 lg:-m-10 bg-slate-100 dark:bg-gray-950">
+        <div className="flex flex-col h-[calc(100vh-80px)] -mx-4 -mb-4 -mt-4 sm:-mx-6 sm:-mb-6 sm:-mt-6 lg:-mx-10 lg:-mb-10 lg:mt-0 bg-slate-100 dark:bg-gray-950 overflow-hidden">
             {/* CSS Animations */}
             <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -585,8 +589,8 @@ export default function PuntoVenta() {
         .amount-input { font-size: 3rem; font-weight: 900; text-align: center; }
       `}</style>
 
-            {/* Top Header Bar */}
-            <header className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 border-b border-cyan-100 dark:border-gray-700 px-4 pt-5 lg:pt-3 pb-3 flex items-center justify-between page-animate gap-2">
+            {/* Top Header Bar - only visible on mobile */}
+            <header className="lg:hidden bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 border-b border-cyan-100 dark:border-gray-700 px-4 pt-5 pb-3 flex items-center justify-between page-animate gap-2">
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <Link to="/admin/apertura-cajas" className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-white/50 dark:hover:bg-gray-700 transition-colors">
                         <span className="material-symbols-outlined">arrow_back</span>
@@ -637,7 +641,7 @@ export default function PuntoVenta() {
                 </div>
 
                 {/* Left Panel - User Info & Cart - HIDDEN on mobile */}
-                <aside className="hidden lg:flex w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-col slide-in">
+                <aside className="hidden lg:flex w-72 xl:w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-col slide-in flex-shrink-0">
                     {/* User Info */}
                     <div className="p-4 border-b border-gray-100 dark:border-gray-800">
                         <div className="flex items-center gap-3">
@@ -659,7 +663,7 @@ export default function PuntoVenta() {
                                 value={searchCode}
                                 onChange={handleBarcodeInput}
                                 onKeyDown={handleBarcodeKeyDown}
-                                className="input-focus w-14 px-2.5 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
+                                className="input-focus w-14 min-w-0 px-2.5 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
                                 placeholder="Cód"
                                 autoFocus
                             />
@@ -667,13 +671,13 @@ export default function PuntoVenta() {
                                 type="text"
                                 value={searchProduct}
                                 onChange={(e) => setSearchProduct(e.target.value)}
-                                className="input-focus flex-1 px-2 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
+                                className="input-focus flex-1 min-w-0 px-2 py-2 text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white focus:border-primary"
                                 placeholder="Buscar producto..."
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowScannerModal(true)}
-                                className="p-2 text-white bg-primary hover:bg-primary/90 border border-primary rounded-lg transition-colors flex items-center justify-center"
+                                className="flex-shrink-0 p-2 text-white bg-primary hover:bg-primary/90 border border-primary rounded-lg transition-colors flex items-center justify-center"
                                 title="Escanear código de barras con cámara"
                             >
                                 <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
@@ -747,8 +751,8 @@ export default function PuntoVenta() {
                 </aside>
 
                 {/* Center - Products Grid */}
-                <main className="flex-1 bg-slate-50 dark:bg-gray-900/50 p-4 pt-16 lg:pt-4 overflow-y-auto pb-24 lg:pb-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
+                <main className="flex-1 min-w-0 bg-slate-50 dark:bg-gray-900/50 p-4 pt-16 lg:pt-4 overflow-y-auto pb-24 lg:pb-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 lg:gap-4">
                         {groupedProducts.map((group, index) => {
                             const product = group[0]; // Producto representante del grupo
                             const totalStock = group.reduce((acc, p) => acc + p.stock, 0);
@@ -814,7 +818,7 @@ export default function PuntoVenta() {
                 </main>
 
                 {/* Right Panel - Payment Methods & Total - HIDDEN on mobile */}
-                <aside className="hidden lg:flex w-64 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex-col slide-up">
+                <aside className="hidden lg:flex w-52 xl:w-64 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex-col slide-up flex-shrink-0">
                     {/* Payment Method Buttons */}
                     <div className="p-3 grid grid-cols-2 gap-2">
                         {paymentMethods.map((method) => (
@@ -1510,6 +1514,56 @@ export default function PuntoVenta() {
                     </div>
                 )
             }
+
+            {/* Modal Escáner de Código de Barras */}
+            {showScannerModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                        onClick={stopScanner}
+                    />
+                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-md w-full scale-in">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary text-2xl">qr_code_scanner</span>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Escáner de Código</h3>
+                            </div>
+                            <button
+                                onClick={stopScanner}
+                                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-white transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-xl">close</span>
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
+                            Apunta la cámara al código de barras del producto
+                        </p>
+
+                        {/* Camera viewfinder */}
+                        <div className="relative rounded-xl overflow-hidden bg-black" style={{ minHeight: '300px' }}>
+                            <div id="barcode-reader-pos" className="w-full"></div>
+                            {scanning && (
+                                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                    <div className="w-56 h-56 border-2 border-primary/50 rounded-lg relative">
+                                        <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+                                        <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+                                        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+                                        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={stopScanner}
+                            className="w-full mt-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Stock Insuficiente */}
             {
