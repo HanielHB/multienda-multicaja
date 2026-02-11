@@ -586,23 +586,23 @@ export default function PuntoVenta() {
       `}</style>
 
             {/* Top Header Bar */}
-            <header className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 border-b border-cyan-100 dark:border-gray-700 px-4 py-3 flex items-center justify-between page-animate">
-                <div className="flex items-center gap-2">
+            <header className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 border-b border-cyan-100 dark:border-gray-700 px-4 pt-5 lg:pt-3 pb-3 flex items-center justify-between page-animate gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                     <Link to="/admin/apertura-cajas" className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-gray hover:bg-white/50 dark:hover:bg-gray-700 transition-colors">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </Link>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
-                    <span className="font-medium text-gray-600 dark:text-gray-400">SUCURSAL:</span>
-                    <span className="font-bold text-primary">{cajaInfo.sucursal}</span>
+                <div className="flex items-center gap-1 sm:gap-4 text-xs sm:text-sm min-w-0">
+                    <span className="font-medium text-gray-600 dark:text-gray-400 hidden sm:inline">SUCURSAL:</span>
+                    <span className="font-bold text-primary truncate">{cajaInfo.sucursal}</span>
                     <span className="text-gray-300 dark:text-gray-600">|</span>
-                    <span className="font-medium text-gray-600 dark:text-gray-400">CAJA:</span>
-                    <span className="font-bold text-primary">{cajaInfo.caja}</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-400 hidden sm:inline">CAJA:</span>
+                    <span className="font-bold text-primary truncate">{cajaInfo.caja}</span>
                 </div>
-                <div className="flex items-center gap-2 clock-pulse">
+                <div className="flex items-center gap-1 sm:gap-2 clock-pulse flex-shrink-0">
                     <span className="material-symbols-outlined text-emerald-500">schedule</span>
-                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{formatTime(currentTime)}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(currentTime)}</span>
+                    <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300">{formatTime(currentTime)}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">{formatDate(currentTime)}</span>
                 </div>
             </header>
 
@@ -867,7 +867,7 @@ export default function PuntoVenta() {
                             />
 
                             {/* Payment Panel */}
-                            <div className="payment-modal w-96 bg-white dark:bg-gray-900 border-l-4 modal-border border-pink-400 flex flex-col shadow-2xl">
+                            <div className="payment-modal w-full sm:w-96 bg-white dark:bg-gray-900 border-l-4 modal-border border-pink-400 flex flex-col shadow-2xl">
                                 {/* Payment Type Badge */}
                                 <div className="flex justify-end p-4">
                                     <span className={`px-4 py-1.5 rounded-full text-white text-sm font-bold ${selectedPaymentInfo?.color || 'bg-pink-500'}`}>
@@ -1116,12 +1116,27 @@ export default function PuntoVenta() {
                                     <span className="text-gray-600 dark:text-gray-400">Total:</span>
                                     <span className="text-2xl font-black text-gray-900 dark:text-white">Bs. {total.toFixed(2)}</span>
                                 </div>
-                                <button
-                                    onClick={() => { setShowMobileCart(false); setTimeout(() => setShowPaymentModal(true), 300); }}
-                                    className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30"
-                                >
-                                    Continuar al Pago
-                                </button>
+                                {/* Payment method selection for mobile */}
+                                <p className="text-xs text-center text-gray-500 dark:text-gray-400 mb-2">Selecciona método de pago:</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {paymentMethods.map((method) => (
+                                        <button
+                                            key={`mobile-pay-${method.id}`}
+                                            onClick={() => {
+                                                setShowMobileCart(false);
+                                                setTimeout(() => handlePaymentSelect(method.id), 300);
+                                            }}
+                                            className={`payment-btn p-3 rounded-xl border-2 flex flex-col items-center gap-1.5 font-bold text-sm transition-all
+                                                ${selectedPayment === method.id
+                                                    ? 'border-primary bg-primary/10 text-primary shadow-lg shadow-primary/10'
+                                                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                                                }`}
+                                        >
+                                            <span className="material-symbols-outlined text-2xl">{method.icon}</span>
+                                            {method.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1352,46 +1367,48 @@ export default function PuntoVenta() {
 
 
             {/* Bottom Action Bar */}
-            <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 py-2.5 flex items-center gap-2 page-animate">
-                <button
-                    onClick={clearCart}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white font-bold text-xs hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 btn-bounce"
-                >
-                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
-                    Eliminar venta
-                </button>
-                <button
-                    onClick={() => setShowCerrarCajaModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-all btn-bounce"
-                >
-                    <span className="material-symbols-outlined text-[16px]">point_of_sale</span>
-                    Cerrar caja
-                </button>
-                <button
-                    onClick={() => setShowIngresoModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-all btn-bounce"
-                >
-                    <span className="material-symbols-outlined text-[16px]">add_circle</span>
-                    Ingresar dinero
-                </button>
-                <button
-                    onClick={() => setShowRetiroModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-all btn-bounce"
-                >
-                    <span className="material-symbols-outlined text-[16px]">remove_circle</span>
-                    Retirar dinero
-                </button>
+            <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-2 lg:px-4 py-1.5 lg:py-2.5 page-animate">
+                <div className="flex items-center gap-1.5 lg:gap-2 flex-wrap lg:flex-nowrap">
+                    <button
+                        onClick={clearCart}
+                        className="flex items-center gap-1 lg:gap-2 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg bg-red-500 text-white font-bold text-[10px] lg:text-xs hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 btn-bounce"
+                    >
+                        <span className="material-symbols-outlined text-[14px] lg:text-[16px]">delete_forever</span>
+                        Eliminar venta
+                    </button>
+                    <button
+                        onClick={() => setShowCerrarCajaModal(true)}
+                        className="flex items-center gap-1 lg:gap-2 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-[10px] lg:text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-all btn-bounce"
+                    >
+                        <span className="material-symbols-outlined text-[14px] lg:text-[16px]">point_of_sale</span>
+                        Cerrar caja
+                    </button>
+                    <button
+                        onClick={() => setShowIngresoModal(true)}
+                        className="flex items-center gap-1 lg:gap-2 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-[10px] lg:text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-all btn-bounce"
+                    >
+                        <span className="material-symbols-outlined text-[14px] lg:text-[16px]">add_circle</span>
+                        Ingresar dinero
+                    </button>
+                    <button
+                        onClick={() => setShowRetiroModal(true)}
+                        className="flex items-center gap-1 lg:gap-2 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-[10px] lg:text-xs hover:bg-gray-50 dark:hover:bg-gray-800 transition-all btn-bounce"
+                    >
+                        <span className="material-symbols-outlined text-[14px] lg:text-[16px]">remove_circle</span>
+                        Retirar dinero
+                    </button>
 
-                {/* Spacer para empujar el saldo a la derecha */}
-                <div className="flex-1"></div>
+                    {/* Spacer para empujar el saldo a la derecha */}
+                    <div className="flex-1 hidden lg:block"></div>
 
-                {/* Cash in Register Display */}
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800">
-                    <span className="material-symbols-outlined text-blue-500 text-[16px]">account_balance_wallet</span>
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">En caja:</span>
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">Bs. {saldoCaja.toFixed(2)}</span>
+                    {/* Cash in Register Display */}
+                    <div className="flex items-center gap-1 lg:gap-2 px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800 ml-auto lg:ml-0">
+                        <span className="material-symbols-outlined text-blue-500 text-[14px] lg:text-[16px]">account_balance_wallet</span>
+                        <span className="text-[10px] lg:text-xs font-medium text-gray-600 dark:text-gray-400">En caja:</span>
+                        <span className="text-xs lg:text-sm font-bold text-blue-600 dark:text-blue-400">Bs. {saldoCaja.toFixed(2)}</span>
+                    </div>
                 </div>
-            </footer >
+            </footer>
 
             {/* Modal Cerrar Caja */}
             {

@@ -13,7 +13,6 @@ export default function Backup() {
         { id: 'clientes', nombre: 'Clientes', icon: 'group', color: 'bg-purple-500' },
         { id: 'inventario', nombre: 'Inventario', icon: 'warehouse', color: 'bg-amber-500' },
         { id: 'usuarios', nombre: 'Usuarios', icon: 'manage_accounts', color: 'bg-rose-500' },
-        { id: 'proveedores', nombre: 'Proveedores', icon: 'local_shipping', color: 'bg-cyan-500' },
     ];
 
     useEffect(() => {
@@ -171,7 +170,7 @@ export default function Backup() {
                         Estadísticas de Datos
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {stats.tablas && Object.entries(stats.tablas).map(([tabla, count]) => (
+                        {stats.tablas && Object.entries(stats.tablas).filter(([tabla]) => tabla.toLowerCase() !== 'proveedores').map(([tabla, count]) => (
                             <div key={tabla} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     {tabla}

@@ -545,8 +545,8 @@ export default function Usuarios() {
                                             value={formData.password}
                                             onChange={handleChange}
                                             className={`w-full px-4 py-2 pr-10 rounded-lg border ${passwordError && formData.password
-                                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                                                    : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'
+                                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                                                : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-primary'
                                                 } dark:bg-gray-800 dark:text-white text-sm`}
                                             placeholder="••••••"
                                             required={!isEditing}
@@ -597,8 +597,6 @@ export default function Usuarios() {
                                     >
                                         <option value="administrador">Administrador</option>
                                         <option value="cajero">Cajero</option>
-                                        <option value="vendedor">Vendedor</option>
-                                        <option value="supervisor">Supervisor</option>
                                     </select>
                                 </div>
 

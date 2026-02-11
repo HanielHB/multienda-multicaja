@@ -7,6 +7,7 @@ export default function Dashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [sucursales, setSucursales] = useState([]);
     const [selectedSucursal, setSelectedSucursal] = useState('all');
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
     // State for real data
     const [stats, setStats] = useState({
@@ -21,6 +22,7 @@ export default function Dashboard() {
     const [topProductos, setTopProductos] = useState([]);
     const [topProductosMonto, setTopProductosMonto] = useState([]);
     const [ventasMensuales, setVentasMensuales] = useState([]);
+    const [chartLabels, setChartLabels] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
@@ -41,7 +43,7 @@ export default function Dashboard() {
     // Fetch all dashboard data
     useEffect(() => {
         fetchDashboardData();
-    }, [activeFilter, currentPage, selectedSucursal]);
+    }, [activeFilter, currentPage, selectedSucursal, selectedDate]);
 
     const getFilterParams = () => {
         const now = new Date();
@@ -67,9 +69,69 @@ export default function Dashboard() {
                 year.setFullYear(year.getFullYear() - 1);
                 fechaInicio = year.toISOString().split('T')[0];
                 break;
+            case 'porDia':
+                fechaInicio = selectedDate;
+                fechaFin = selectedDate;
+                break;
             default:
                 // 'todo' - no filter
                 break;
+        }
+
+        return { fechaInicio, fechaFin };
+    };
+
+    // Calculate previous period params for comparison
+    const getPreviousPeriodParams = () => {
+        const now = new Date();
+        let fechaInicio = null;
+        let fechaFin = null;
+
+        switch (activeFilter) {
+            case 'hoy': {
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                fechaInicio = yesterday.toISOString().split('T')[0];
+                fechaFin = fechaInicio;
+                break;
+            }
+            case '7dias': {
+                const prevEnd = new Date(now);
+                prevEnd.setDate(prevEnd.getDate() - 7);
+                const prevStart = new Date(prevEnd);
+                prevStart.setDate(prevStart.getDate() - 7);
+                fechaInicio = prevStart.toISOString().split('T')[0];
+                fechaFin = prevEnd.toISOString().split('T')[0];
+                break;
+            }
+            case '30dias': {
+                const prevEnd = new Date(now);
+                prevEnd.setDate(prevEnd.getDate() - 30);
+                const prevStart = new Date(prevEnd);
+                prevStart.setDate(prevStart.getDate() - 30);
+                fechaInicio = prevStart.toISOString().split('T')[0];
+                fechaFin = prevEnd.toISOString().split('T')[0];
+                break;
+            }
+            case '12meses': {
+                const prevEnd = new Date(now);
+                prevEnd.setFullYear(prevEnd.getFullYear() - 1);
+                const prevStart = new Date(prevEnd);
+                prevStart.setFullYear(prevStart.getFullYear() - 1);
+                fechaInicio = prevStart.toISOString().split('T')[0];
+                fechaFin = prevEnd.toISOString().split('T')[0];
+                break;
+            }
+            case 'porDia': {
+                const prevDay = new Date(selectedDate);
+                prevDay.setDate(prevDay.getDate() - 1);
+                fechaInicio = prevDay.toISOString().split('T')[0];
+                fechaFin = fechaInicio;
+                break;
+            }
+            default:
+                // 'todo' - no previous period
+                return null;
         }
 
         return { fechaInicio, fechaFin };
@@ -165,17 +227,53 @@ export default function Dashboard() {
                 console.error('Error fetching ventas:', err);
             }
 
-            // Fetch movimientos de caja  
+            // Fetch previous period ventas for comparison
+            let prevTotalVentas = 0;
+            let prevTotalProductos = 0;
+            const prevPeriod = getPreviousPeriodParams();
+            if (prevPeriod) {
+                try {
+                    const prevParams = [];
+                    prevParams.push(`fechaInicio=${prevPeriod.fechaInicio}`);
+                    prevParams.push(`fechaFin=${prevPeriod.fechaFin}`);
+                    if (selectedSucursal !== 'all') {
+                        prevParams.push(`sucursalId=${selectedSucursal}`);
+                    }
+                    const prevQueryParams = `?${prevParams.join('&')}`;
+                    const prevRes = await fetch(`${API_URL}/ventas${prevQueryParams}`, { headers });
+                    if (prevRes.ok) {
+                        const prevData = await prevRes.json();
+                        let prevVentas = prevData.data || prevData || [];
+                        if (!Array.isArray(prevVentas)) prevVentas = [];
+                        prevVentas.forEach(venta => {
+                            prevTotalVentas += parseFloat(venta.total) || 0;
+                            const items = venta.items || venta.detalles || venta.ventaItems || [];
+                            items.forEach(item => {
+                                prevTotalProductos += parseInt(item.cantidad) || 1;
+                            });
+                        });
+                    }
+                } catch (err) {
+                    console.error('Error fetching previous period:', err);
+                }
+            }
+
+            // Fetch movimientos de caja (with date and sucursal filters)
             let movimientosData = [];
             try {
-                // Try the main endpoint
-                let movimientosRes = await fetch(`${API_URL}/movimientos-caja?limit=10&page=${currentPage}`, { headers });
-
-                console.log('Movimientos response status:', movimientosRes.status);
+                const movParams = [`limit=10`, `page=${currentPage}`];
+                if (fechaInicio) {
+                    movParams.push(`fechaInicio=${fechaInicio}`);
+                    movParams.push(`fechaFin=${fechaFin}`);
+                }
+                if (selectedSucursal !== 'all') {
+                    movParams.push(`sucursalId=${selectedSucursal}`);
+                }
+                const movQueryParams = `?${movParams.join('&')}`;
+                let movimientosRes = await fetch(`${API_URL}/movimientos-caja${movQueryParams}`, { headers });
 
                 if (movimientosRes.ok) {
                     const data = await movimientosRes.json();
-                    console.log('Movimientos raw data:', data);
 
                     // Try different data structures
                     if (Array.isArray(data)) {
@@ -191,7 +289,6 @@ export default function Dashboard() {
                     }
 
                     setTotalPages(data.totalPages || data.meta?.totalPages || data.pagination?.totalPages || 1);
-                    console.log('Extracted movimientos:', movimientosData);
                 }
             } catch (err) {
                 console.error('Error fetching movimientos:', err);
@@ -214,19 +311,76 @@ export default function Dashboard() {
                 porcentaje: Math.round((p.monto / maxMonto) * 100)
             }));
 
-            // Calculate monthly sales for chart
-            const monthlySales = Array(12).fill(0);
-            ventasData.forEach(venta => {
-                const fecha = new Date(venta.fecha || venta.createdAt || venta.created_at);
-                if (!isNaN(fecha.getTime())) {
-                    const month = fecha.getMonth();
-                    monthlySales[month] += parseFloat(venta.total) || 0;
+            // Build chart data based on active filter
+            let chartData = [];
+            let labels = [];
+
+            if (activeFilter === 'hoy' || activeFilter === 'porDia') {
+                // Group by hours (0-23)
+                chartData = Array(24).fill(0);
+                ventasData.forEach(venta => {
+                    const fecha = new Date(venta.fecha || venta.createdAt || venta.created_at);
+                    if (!isNaN(fecha.getTime())) {
+                        const hour = fecha.getHours();
+                        chartData[hour] += parseFloat(venta.total) || 0;
+                    }
+                });
+                labels = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+            } else if (activeFilter === '7dias') {
+                // Group by last 7 days
+                const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                chartData = Array(7).fill(0);
+                labels = [];
+                const now = new Date();
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(now);
+                    d.setDate(d.getDate() - i);
+                    labels.push(diasSemana[d.getDay()]);
                 }
-            });
+                ventasData.forEach(venta => {
+                    const fecha = new Date(venta.fecha || venta.createdAt || venta.created_at);
+                    if (!isNaN(fecha.getTime())) {
+                        const diffDays = Math.floor((now - fecha) / (1000 * 60 * 60 * 24));
+                        if (diffDays >= 0 && diffDays < 7) {
+                            chartData[6 - diffDays] += parseFloat(venta.total) || 0;
+                        }
+                    }
+                });
+            } else if (activeFilter === '30dias') {
+                // Group by last 30 days
+                chartData = Array(30).fill(0);
+                labels = [];
+                const now = new Date();
+                for (let i = 29; i >= 0; i--) {
+                    const d = new Date(now);
+                    d.setDate(d.getDate() - i);
+                    labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
+                }
+                ventasData.forEach(venta => {
+                    const fecha = new Date(venta.fecha || venta.createdAt || venta.created_at);
+                    if (!isNaN(fecha.getTime())) {
+                        const diffDays = Math.floor((now - fecha) / (1000 * 60 * 60 * 24));
+                        if (diffDays >= 0 && diffDays < 30) {
+                            chartData[29 - diffDays] += parseFloat(venta.total) || 0;
+                        }
+                    }
+                });
+            } else {
+                // 'todo' and '12meses' - Group by months
+                chartData = Array(12).fill(0);
+                labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                ventasData.forEach(venta => {
+                    const fecha = new Date(venta.fecha || venta.createdAt || venta.created_at);
+                    if (!isNaN(fecha.getTime())) {
+                        const month = fecha.getMonth();
+                        chartData[month] += parseFloat(venta.total) || 0;
+                    }
+                });
+            }
 
             // Normalize for chart display (0-100%)
-            const maxMonthly = Math.max(...monthlySales, 1);
-            const normalizedMonthly = monthlySales.map(val => Math.round((val / maxMonthly) * 100));
+            const maxVal = Math.max(...chartData, 1);
+            const normalizedChart = chartData.map(val => Math.round((val / maxVal) * 100));
 
             // Format movimientos for display
             const formattedMovimientos = movimientosData.map(mov => {
@@ -245,22 +399,30 @@ export default function Dashboard() {
                 };
             });
 
-            // Estimate ganancias (20% margin as example)
+            // Estimate ganancias (20% margin)
             const estimatedGanancias = totalVentas * 0.20;
+
+            // Calculate period-over-period change
+            const calcChange = (current, previous) => {
+                if (previous === 0) return current > 0 ? 100 : 0;
+                return Math.round(((current - previous) / previous) * 100);
+            };
+            const prevEstimatedGanancias = prevTotalVentas * 0.20;
 
             // Update state
             setStats({
                 ventas: totalVentas,
                 productosVendidos: totalProductosVendidos,
                 ganancias: estimatedGanancias,
-                cambioVentas: 0,
-                cambioProductos: 0,
-                cambioGanancias: 0
+                cambioVentas: prevPeriod ? calcChange(totalVentas, prevTotalVentas) : 0,
+                cambioProductos: prevPeriod ? calcChange(totalProductosVendidos, prevTotalProductos) : 0,
+                cambioGanancias: prevPeriod ? calcChange(estimatedGanancias, prevEstimatedGanancias) : 0
             });
             setMovimientosCaja(formattedMovimientos);
             setTopProductos(sortedByCantidad);
             setTopProductosMonto(topMontoWithPercentage);
-            setVentasMensuales(normalizedMonthly);
+            setVentasMensuales(normalizedChart);
+            setChartLabels(labels);
 
         } catch (err) {
             console.error('Error fetching dashboard data:', err);
@@ -275,6 +437,7 @@ export default function Dashboard() {
 
     const handleClearFilter = () => {
         setActiveFilter('todo');
+        setSelectedDate(new Date().toISOString().split('T')[0]);
     };
 
     return (
@@ -382,6 +545,14 @@ export default function Dashboard() {
                             {filter.label}
                         </button>
                     ))}
+                    {activeFilter === 'porDia' && (
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                        />
+                    )}
                     <button
                         onClick={handleClearFilter}
                         className="filter-btn px-4 py-2 rounded-lg text-sm font-medium text-primary hover:bg-primary/10 transition-all"
@@ -451,7 +622,7 @@ export default function Dashboard() {
                     style={{ animationDelay: '0.3s' }}
                 >
                     <div className="flex items-start justify-between mb-4">
-                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Ganancias</span>
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Ganancias (est.)</span>
                         <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                             <span className="material-symbols-outlined text-purple-600 dark:text-purple-400">trending_up</span>
                         </div>
@@ -540,31 +711,22 @@ export default function Dashboard() {
                     </div>
 
                     {/* Simple Chart Visualization */}
-                    <div className="h-32 flex items-end gap-2">
-                        {(ventasMensuales.length > 0 ? ventasMensuales : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).map((height, index) => (
+                    <div className="h-32 flex items-end gap-[2px] sm:gap-1 lg:gap-2">
+                        {ventasMensuales.map((height, index) => (
                             <div
                                 key={index}
-                                className="flex-1 bg-gradient-to-t from-primary/80 to-primary/40 rounded-t-lg transition-all duration-500 hover:from-primary hover:to-primary/60"
+                                className="flex-1 bg-gradient-to-t from-primary/80 to-primary/40 rounded-t-lg transition-all duration-500 hover:from-primary hover:to-primary/60 min-w-[3px]"
                                 style={{
                                     height: `${Math.max(height, 5)}%`,
-                                    animationDelay: `${0.7 + index * 0.05}s`
+                                    animationDelay: `${0.7 + index * 0.02}s`
                                 }}
                             ></div>
                         ))}
                     </div>
-                    <div className="flex justify-between mt-2 text-xs text-gray-400">
-                        <span>Ene</span>
-                        <span>Feb</span>
-                        <span>Mar</span>
-                        <span>Abr</span>
-                        <span>May</span>
-                        <span>Jun</span>
-                        <span>Jul</span>
-                        <span>Ago</span>
-                        <span>Sep</span>
-                        <span>Oct</span>
-                        <span>Nov</span>
-                        <span>Dic</span>
+                    <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-400 overflow-x-auto">
+                        {chartLabels.map((label, i) => (
+                            <span key={i} className="flex-shrink-0">{label}</span>
+                        ))}
                     </div>
                 </div>
             </div>
