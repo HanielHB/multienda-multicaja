@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { API_URL } from '../../config/api';
+import { API_URL, API_ROOT_URL } from '../../config/api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -476,6 +476,14 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
     const [productosHueso, setProductosHueso] = useState(null);
     const [todosProductos, setTodosProductos] = useState([]);
 
+    // Helper para construir URL de imagen
+    const getImageUrl = (imagePath) => {
+        if (!imagePath) return null;
+        if (imagePath.startsWith('http')) return imagePath;
+        if (imagePath.startsWith('/uploads')) return `${API_ROOT_URL}${imagePath}`;
+        return imagePath;
+    };
+
     // Calculate days diff for rotation report
     const getDaysDiff = () => {
         const start = new Date(startDate);
@@ -681,6 +689,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 uppercase bg-amber-50 dark:bg-amber-900/20 dark:text-gray-400">
                             <tr>
+                                <th className="px-6 py-3" style={{ width: '50px' }}></th>
                                 <th className="px-6 py-3">Producto</th>
                                 <th className="px-6 py-3">Categoría</th>
                                 <th className="px-6 py-3 text-center">Talla</th>
@@ -696,6 +705,15 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                                 const minimo = producto.stockMinimo ?? 5;
                                 return (
                                     <tr key={producto.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-amber-50/50 dark:hover:bg-amber-900/10">
+                                        <td className="px-6 py-4">
+                                            <div className="size-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                                {getImageUrl(producto.imagen) ? (
+                                                    <img src={getImageUrl(producto.imagen)} alt={producto.nombre} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="material-symbols-outlined text-gray-400 text-[20px]">inventory_2</span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                                             {producto.nombre}
                                             {producto.color && (
@@ -726,7 +744,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                             })}
                             {productosStockBajo.length === 0 && (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
                                         <span className="material-symbols-outlined text-emerald-400 text-3xl block mb-2">check_circle</span>
                                         ¡Todos tus productos tienen stock suficiente!
                                     </td>
@@ -775,6 +793,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 uppercase bg-red-50 dark:bg-red-900/20 dark:text-gray-400">
                             <tr>
+                                <th className="px-6 py-3" style={{ width: '50px' }}></th>
                                 <th className="px-6 py-3">Producto</th>
                                 <th className="px-6 py-3">Categoría</th>
                                 <th className="px-6 py-3 text-center">Talla</th>
@@ -786,6 +805,15 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                         <tbody>
                             {productosSinStock.map((producto) => (
                                 <tr key={producto.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-red-50/50 dark:hover:bg-red-900/10">
+                                    <td className="px-6 py-4">
+                                        <div className="size-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                            {getImageUrl(producto.imagen) ? (
+                                                <img src={getImageUrl(producto.imagen)} alt={producto.nombre} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="material-symbols-outlined text-gray-400 text-[20px]">inventory_2</span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                                         {producto.nombre}
                                         {producto.color && (
@@ -813,7 +841,7 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                             ))}
                             {productosSinStock.length === 0 && (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                                         <span className="material-symbols-outlined text-emerald-400 text-3xl block mb-2">check_circle</span>
                                         ¡Excelente! No tienes productos agotados.
                                     </td>
