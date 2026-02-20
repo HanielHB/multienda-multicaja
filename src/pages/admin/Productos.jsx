@@ -245,14 +245,21 @@ export default function Productos() {
         },
       );
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error("Error al eliminar");
+        // Manejar errores específicos del soft delete
+        alert(result.error || "Error al eliminar el producto");
+        return;
       }
 
-      await fetchProductos();
+      // Eliminar de la lista local (el producto sigue en BD pero inactivo)
+      setProductos((prev) =>
+        prev.filter((p) => p.id !== productoToDelete.id),
+      );
       closeDeleteModal();
     } catch (err) {
-      alert(err.message);
+      alert("Error al eliminar el producto");
     } finally {
       setDeleting(false);
     }
