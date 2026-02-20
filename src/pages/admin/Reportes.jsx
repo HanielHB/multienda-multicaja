@@ -474,6 +474,7 @@ function ReportesVentas({ startDate, endDate, shouldFetch, onExport, sucursalId 
 function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursalId }) {
     const [inventarioValorado, setInventarioValorado] = useState(null);
     const [productosHueso, setProductosHueso] = useState(null);
+    const [todosProductos, setTodosProductos] = useState([]);
 
     // Calculate days diff for rotation report
     const getDaysDiff = () => {
@@ -487,12 +488,8 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
     useEffect(() => {
         fetchInventarioValorado();
         fetchProductosHueso();
+        fetchTodosProductos();
     }, [shouldFetch, sucursalId]);
-
-    // Update manually if dates change? Or only on Generate?
-    // The requirement implies "Generate" button triggers the update.
-    // So we depend on 'shouldFetch' which is incremented by Generate button.
-
 
     const fetchInventarioValorado = async () => {
         try {
@@ -521,6 +518,36 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
             if (res.ok) setProductosHueso(await res.json());
         } catch (err) { console.error(err); }
     };
+
+    const fetchTodosProductos = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const params = ['limit=1000'];
+            if (sucursalId) {
+                params.push(`sucursalId=${sucursalId}`);
+            }
+            const res = await fetch(`${API_URL}/productos?${params.join('&')}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const result = await res.json();
+                setTodosProductos(result.data || []);
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    // Filtrar productos con stock bajo (stock > 0 pero <= stockMinimo)
+    const productosStockBajo = todosProductos.filter((p) => {
+        const stock = p.stockActual ?? p.stock ?? 0;
+        const minimo = p.stockMinimo ?? 5;
+        return stock > 0 && stock <= minimo;
+    });
+
+    // Filtrar productos sin stock (stock === 0)
+    const productosSinStock = todosProductos.filter((p) => {
+        const stock = p.stockActual ?? p.stock ?? 0;
+        return stock === 0;
+    });
 
     return (
         <div className="flex flex-col gap-6">
@@ -607,6 +634,188 @@ function ReportesInventario({ startDate, endDate, shouldFetch, onExport, sucursa
                                 <tr>
                                     <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
                                         ¡Excelente! No tienes productos estancados en este periodo.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Tabla Productos con Stock Bajo */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-amber-200 dark:border-amber-800/50">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div>
+                        <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span className="material-symbols-outlined text-amber-500">trending_down</span>
+                            Productos con Stock Bajo
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Productos cuyo stock actual es igual o menor al stock mínimo configurado. Considera reabastecer pronto.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full dark:bg-amber-900 dark:text-amber-300">
+                            {productosStockBajo.length} producto{productosStockBajo.length !== 1 ? 's' : ''}
+                        </span>
+                        <button
+                            onClick={() => onExport(productosStockBajo.map(p => ({
+                                Producto: p.nombre,
+                                Talla: p.talla || 'N/A',
+                                Color: p.color || 'N/A',
+                                Categoría: p.categoria?.nombre || 'N/A',
+                                'Stock Actual': p.stockActual ?? p.stock ?? 0,
+                                'Stock Mínimo': p.stockMinimo ?? 5,
+                                'Precio Compra': parseFloat(p.precioCompra).toFixed(2),
+                                'Precio Venta': parseFloat(p.precioVenta).toFixed(2),
+                            })), 'Productos_Stock_Bajo')}
+                            className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">download</span>
+                            Exportar CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-amber-50 dark:bg-amber-900/20 dark:text-gray-400">
+                            <tr>
+                                <th className="px-6 py-3">Producto</th>
+                                <th className="px-6 py-3">Categoría</th>
+                                <th className="px-6 py-3 text-center">Talla</th>
+                                <th className="px-6 py-3 text-center">Stock Actual</th>
+                                <th className="px-6 py-3 text-center">Stock Mínimo</th>
+                                <th className="px-6 py-3 text-right">Precio Compra</th>
+                                <th className="px-6 py-3 text-right">Precio Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {productosStockBajo.map((producto) => {
+                                const stock = producto.stockActual ?? producto.stock ?? 0;
+                                const minimo = producto.stockMinimo ?? 5;
+                                return (
+                                    <tr key={producto.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-amber-50/50 dark:hover:bg-amber-900/10">
+                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                            {producto.nombre}
+                                            {producto.color && (
+                                                <>
+                                                    <br />
+                                                    <span className="text-xs text-gray-400">Color: {producto.color}</span>
+                                                </>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">{producto.categoria?.nombre || 'N/A'}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">
+                                                {producto.talla || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full dark:bg-amber-900 dark:text-amber-300">
+                                                {stock} und.
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center text-gray-400">
+                                            {minimo} und.
+                                        </td>
+                                        <td className="px-6 py-4 text-right">Bs. {parseFloat(producto.precioCompra).toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-right font-semibold">Bs. {parseFloat(producto.precioVenta).toFixed(2)}</td>
+                                    </tr>
+                                );
+                            })}
+                            {productosStockBajo.length === 0 && (
+                                <tr>
+                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                                        <span className="material-symbols-outlined text-emerald-400 text-3xl block mb-2">check_circle</span>
+                                        ¡Todos tus productos tienen stock suficiente!
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Tabla Productos Sin Stock (Agotados) */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-red-200 dark:border-red-800/50">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div>
+                        <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span className="material-symbols-outlined text-red-500">inventory_2</span>
+                            Productos Sin Stock (Agotados)
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Productos que actualmente no tienen ninguna unidad disponible. ¡Requieren reabastecimiento urgente!
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full dark:bg-red-900 dark:text-red-300">
+                            {productosSinStock.length} producto{productosSinStock.length !== 1 ? 's' : ''}
+                        </span>
+                        <button
+                            onClick={() => onExport(productosSinStock.map(p => ({
+                                Producto: p.nombre,
+                                Talla: p.talla || 'N/A',
+                                Color: p.color || 'N/A',
+                                Categoría: p.categoria?.nombre || 'N/A',
+                                'Stock Actual': 0,
+                                'Precio Compra': parseFloat(p.precioCompra).toFixed(2),
+                                'Precio Venta': parseFloat(p.precioVenta).toFixed(2),
+                            })), 'Productos_Sin_Stock')}
+                            className="text-primary hover:bg-primary/10 px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors no-print"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">download</span>
+                            Exportar CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-red-50 dark:bg-red-900/20 dark:text-gray-400">
+                            <tr>
+                                <th className="px-6 py-3">Producto</th>
+                                <th className="px-6 py-3">Categoría</th>
+                                <th className="px-6 py-3 text-center">Talla</th>
+                                <th className="px-6 py-3 text-center">Estado</th>
+                                <th className="px-6 py-3 text-right">Precio Compra</th>
+                                <th className="px-6 py-3 text-right">Precio Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {productosSinStock.map((producto) => (
+                                <tr key={producto.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-red-50/50 dark:hover:bg-red-900/10">
+                                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                        {producto.nombre}
+                                        {producto.color && (
+                                            <>
+                                                <br />
+                                                <span className="text-xs text-gray-400">Color: {producto.color}</span>
+                                            </>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">{producto.categoria?.nombre || 'N/A'}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">
+                                            {producto.talla || 'N/A'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-800 text-xs font-bold px-2.5 py-1 rounded-full dark:bg-red-900 dark:text-red-300">
+                                            <span className="size-1.5 rounded-full bg-red-500"></span>
+                                            Agotado
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">Bs. {parseFloat(producto.precioCompra).toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-right font-semibold">Bs. {parseFloat(producto.precioVenta).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                            {productosSinStock.length === 0 && (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                        <span className="material-symbols-outlined text-emerald-400 text-3xl block mb-2">check_circle</span>
+                                        ¡Excelente! No tienes productos agotados.
                                     </td>
                                 </tr>
                             )}
